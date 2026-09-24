@@ -1,21 +1,27 @@
 import { motion } from 'framer-motion';
-import { ShieldCheck, Lock } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import AuthVisual from './AuthVisual.jsx';
 
 function AuthLayout({ title, subtitle, children }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background md:flex-row">
-      <div className="hidden flex-1 flex-col justify-between bg-ink px-12 py-10 text-white md:flex">
-        <div className="flex items-center gap-2 text-lg font-semibold">
-          <ShieldCheck className="h-5 w-5" />
+    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+      <div className="hidden flex-1 flex-col bg-ink px-12 pb-10 pt-10 text-white lg:flex xl:px-16">
+        <span className="font-display text-6xl font-semibold leading-none tracking-tight xl:text-7xl">
           Vaultrix
-        </div>
+        </span>
 
         <AuthVisual />
 
-        <div className="flex items-center gap-2 text-sm text-white/60">
-          <Lock className="h-4 w-4 flex-shrink-0" />
-          <span>Your financial data is encrypted and never shared.</span>
+        <div className="flex items-start gap-3.5 border-t border-white/10 pt-6">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-white/15 bg-white/[0.05]">
+            <Lock className="h-4 w-4 text-white/80" strokeWidth={1.75} />
+          </div>
+          <div>
+            <p className="text-[13px] font-medium text-white/90">Encrypted at rest and in transit</p>
+            <p className="mt-0.5 text-[13px] leading-relaxed text-white/50">
+              Only you and the people you invite can see your records.
+            </p>
+          </div>
         </div>
       </div>
 
