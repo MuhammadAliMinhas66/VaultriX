@@ -6,7 +6,10 @@ function AuthLayout({ title, subtitle, children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <div className="hidden flex-1 flex-col bg-ink px-12 pb-10 pt-10 text-white lg:flex xl:px-16">
-        <span className="font-display text-6xl font-semibold leading-none tracking-tight xl:text-7xl">
+        <span
+          className="text-6xl font-semibold leading-none tracking-tight xl:text-7xl"
+          style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+        >
           Vaultrix
         </span>
 

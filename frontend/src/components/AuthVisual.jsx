@@ -237,8 +237,8 @@ const RIGHT_EDGE = PHONE_LEFT + PHONE_W + GAP;
 const LEFT_EDGE = PHONE_LEFT - GAP - CARD_W;
 
 // How far each page is swung open, in degrees. Right pages open wider than left ones.
-const RIGHT_TURN = 58;
-const LEFT_TURN = 46;
+const RIGHT_TURN = 20;
+const LEFT_TURN = 16;
 
 const TOOLTIP_TOP = 74;
 
@@ -277,6 +277,10 @@ function LoansPage() {
             <span className={`text-[12.5px] font-semibold tabular-nums ${row.tone}`}>{row.amount}</span>
           </div>
         ))}
+      </div>
+      <div className="mt-2.5 flex items-center justify-between border-t border-ink/10 pt-2 text-[11px]">
+        <span className="text-ink/50">Net position</span>
+        <span className="font-semibold tabular-nums">+3,800</span>
       </div>
     </PageShell>
   );
@@ -339,10 +343,10 @@ function SalaryPage() {
 }
 
 const pages = [
-  { side: 'left', top: 110, tilt: -4, Page: LoansPage },
-  { side: 'right', top: 200, tilt: 3, Page: CommitteePage },
-  { side: 'left', top: 306, tilt: 3, Page: RentPage },
-  { side: 'right', top: 376, tilt: -3, Page: SalaryPage },
+  { side: 'left', top: 110, tilt: 0, Page: LoansPage },
+  { side: 'right', top: 200, tilt: 0, Page: CommitteePage },
+  { side: 'left', top: 306, tilt: 0, Page: RentPage },
+  { side: 'right', top: 376, tilt: 0, Page: SalaryPage },
 ];
 
 const SHRUNK = 0.3;
@@ -504,7 +508,7 @@ function AuthVisual() {
         style={{
           width: STAGE_W,
           height: STAGE_H,
-          perspective: 900,
+          perspective: 1800,
           transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
