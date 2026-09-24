@@ -163,14 +163,14 @@ const screens = [
 ];
 
 const callouts = [
-  { text: 'Real-time balance across accounts', dotTop: 24, dotLeft: 50, align: 'center' },
-  { text: 'See exactly who owes who', dotTop: 45, dotLeft: 26, align: 'left' },
-  { text: 'Follow every committee round', dotTop: 42, dotLeft: 50, align: 'center' },
-  { text: 'Split any bill in seconds', dotTop: 30, dotLeft: 50, align: 'center' },
+  { text: 'Real-time balance across accounts', dotTop: 30, dotLeft: 50, align: 'center' },
+  { text: 'See exactly who owes who', dotTop: 30, dotLeft: 24, align: 'left' },
+  { text: 'Follow every committee round', dotTop: 30, dotLeft: 50, align: 'center' },
+  { text: 'Split any bill in seconds', dotTop: 28, dotLeft: 50, align: 'center' },
 ];
 
 const SCREEN_DURATION = 2800;
-const LABEL_TOP = -15;
+const LINE_LEN = 24;
 
 function PhoneScreen({ index }) {
   const ActiveCard = screens[index].Component;
@@ -222,34 +222,35 @@ function PhoneScreen({ index }) {
 
 function Callout({ callout, index }) {
   const alignOffset = { left: '0%', center: '-50%', right: '-100%' }[callout.align];
-  const lineHeight = `calc(${callout.dotTop - LABEL_TOP}% - 22px)`;
+  const anchorTop = `calc(${callout.dotTop}% - ${LINE_LEN}px)`;
 
   return (
     <motion.div
       key={index}
-      className="pointer-events-none absolute inset-0"
+      className="pointer-events-none absolute inset-0 z-20"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
     >
       <div
-        className="absolute whitespace-nowrap rounded-lg border border-white/15 bg-[#17171c]/95 px-2.5 py-1.5 text-[11px] font-medium text-white/90 shadow-xl backdrop-blur-sm"
+        className="absolute whitespace-nowrap rounded-lg border border-white/20 bg-[#1c1c22] px-2.5 py-1.5 text-[11px] font-medium text-white shadow-xl"
         style={{
-          top: `${LABEL_TOP}%`,
+          top: anchorTop,
           left: `${callout.dotLeft}%`,
-          transform: `translateX(${alignOffset})`,
+          transform: `translate(${alignOffset}, -100%)`,
         }}
       >
         {callout.text}
       </div>
 
       <div
-        className="absolute w-px bg-white/30"
+        className="absolute w-px bg-white/35"
         style={{
-          top: `calc(${LABEL_TOP}% + 22px)`,
+          top: anchorTop,
           left: `${callout.dotLeft}%`,
-          height: lineHeight,
+          height: LINE_LEN,
+          transform: 'translateX(-50%)',
         }}
       />
 
@@ -276,16 +277,16 @@ function AuthVisual() {
   }, []);
 
   return (
-    <div className="relative flex h-[470px] items-center lg:h-[510px]">
-      <div className="relative ml-4 h-[380px] w-[220px] lg:h-[424px] lg:w-[248px]">
+    <div className="relative flex h-[470px] items-center justify-center lg:h-[510px]">
+      <div className="relative h-[380px] w-[220px] lg:h-[424px] lg:w-[248px]">
         <motion.div
-          className="absolute inset-0 -z-10 rounded-[2.6rem] bg-white/[0.06] blur-2xl"
+          className="absolute inset-0 -z-10 rounded-[3rem] bg-white/[0.08] blur-2xl"
           animate={{ opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         />
 
         <motion.div
-          className="relative h-full w-full rounded-[2.2rem] border border-white/15 bg-white/[0.03] p-2 shadow-2xl"
+          className="relative h-full w-full rounded-[3rem] border-[3px] border-[#48484f] bg-gradient-to-b from-[#2c2c31] to-[#19191c] p-[3px] shadow-2xl"
           initial={{ opacity: 0, y: 10, scale: 0.97 }}
           animate={{ opacity: 1, y: [0, -6, 0], scale: 1 }}
           transition={{
@@ -294,14 +295,24 @@ function AuthVisual() {
             y: { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
           }}
         >
-          <div className="absolute left-1/2 top-2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/25" />
-          <div className="h-full w-full overflow-hidden rounded-[1.6rem]">
-            <PhoneScreen index={index} />
-          </div>
+          <span className="absolute -left-[3px] top-[68px] h-4 w-[3px] rounded-l-sm bg-[#5a5a62]" />
+          <span className="absolute -left-[3px] top-[92px] h-9 w-[3px] rounded-l-sm bg-[#5a5a62]" />
+          <span className="absolute -left-[3px] top-[132px] h-9 w-[3px] rounded-l-sm bg-[#5a5a62]" />
+          <span className="absolute -right-[3px] top-[100px] h-12 w-[3px] rounded-r-sm bg-[#5a5a62]" />
 
-          <AnimatePresence mode="wait">
-            <Callout key={index} callout={callouts[index]} index={index} />
-          </AnimatePresence>
+          <div className="relative h-full w-full overflow-hidden rounded-[2.7rem] border border-black/60 bg-black">
+            <div className="absolute left-1/2 top-2 z-30 flex h-[18px] w-[64px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-white/10" />
+            </div>
+
+            <div className="relative z-0 h-full w-full overflow-hidden rounded-[2.4rem]">
+              <PhoneScreen index={index} />
+            </div>
+
+            <AnimatePresence mode="wait">
+              <Callout key={index} callout={callouts[index]} index={index} />
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
     </div>
