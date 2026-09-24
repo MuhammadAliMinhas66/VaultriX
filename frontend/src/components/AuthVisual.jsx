@@ -342,11 +342,185 @@ function SalaryPage() {
   );
 }
 
-const pages = [
-  { side: 'left', top: 110, tilt: 0, Page: LoansPage },
-  { side: 'right', top: 200, tilt: 0, Page: CommitteePage },
-  { side: 'left', top: 306, tilt: 0, Page: RentPage },
-  { side: 'right', top: 376, tilt: 0, Page: SalaryPage },
+function BillsPage() {
+  const rows = [
+    { name: 'Electricity', note: 'Due 8 Oct', amount: '6,000' },
+    { name: 'Internet', note: 'Bilal paid for you', amount: '1,000' },
+  ];
+
+  return (
+    <PageShell title="Bills" meta="2 pending">
+      <div className="mt-3 flex flex-col gap-2.5">
+        {rows.map((row) => (
+          <div key={row.name} className="flex items-center justify-between">
+            <div>
+              <p className="text-[11.5px] font-medium leading-tight">{row.name}</p>
+              <p className="whitespace-nowrap text-[10px] text-ink/45">{row.note}</p>
+            </div>
+            <span className="text-[12.5px] font-semibold tabular-nums">{row.amount}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2.5 flex items-center justify-between border-t border-ink/10 pt-2 text-[11px]">
+        <span className="text-ink/50">Total due</span>
+        <span className="font-semibold tabular-nums">7,000</span>
+      </div>
+    </PageShell>
+  );
+}
+
+function SplitPage() {
+  return (
+    <PageShell title="Group split" meta="Murree trip">
+      <p className="mt-2.5 text-[10.5px] text-ink/50">Others owe you</p>
+      <p className="text-[23px] font-semibold leading-tight tabular-nums text-emerald-700">8,000</p>
+      <div className="mt-2.5 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">You paid</span>
+        <span className="font-medium tabular-nums">12,000</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">Your share</span>
+        <span className="font-medium tabular-nums">4,000</span>
+      </div>
+    </PageShell>
+  );
+}
+
+function BudgetPage() {
+  const rows = [
+    { name: 'Groceries', text: '18,400 of 25,000', pct: 74 },
+    { name: 'Transport', text: '7,200 of 12,000', pct: 60 },
+  ];
+
+  return (
+    <PageShell title="Budget" meta="October">
+      <div className="mt-3 flex flex-col gap-3">
+        {rows.map((row) => (
+          <div key={row.name}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] font-medium">{row.name}</span>
+              <span className="text-[10px] tabular-nums text-ink/50">{row.text}</span>
+            </div>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
+              <div className="h-full rounded-full bg-ink" style={{ width: `${row.pct}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </PageShell>
+  );
+}
+
+function GoalPage() {
+  return (
+    <PageShell title="Savings goal" meta="52%">
+      <p className="mt-3 text-[14px] font-semibold leading-tight">Emergency fund</p>
+      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
+        <div className="h-full w-[52%] rounded-full bg-ink" />
+      </div>
+      <div className="mt-3 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">Saved</span>
+        <span className="font-semibold tabular-nums">104,000</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">Target</span>
+        <span className="font-medium tabular-nums">200,000</span>
+      </div>
+    </PageShell>
+  );
+}
+
+function AccountsPage() {
+  const rows = [
+    { name: 'Cash', amount: '18,240' },
+    { name: 'Bank', amount: '112,000' },
+    { name: 'Wallet', amount: '18,000' },
+  ];
+
+  return (
+    <PageShell title="Accounts" meta="3 accounts">
+      <div className="mt-3 flex flex-col gap-1.5">
+        {rows.map((row) => (
+          <div key={row.name} className="flex items-center justify-between text-[11.5px]">
+            <span className="text-ink/50">{row.name}</span>
+            <span className="font-medium tabular-nums">{row.amount}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-2 text-[13px]">
+        <span className="font-medium">Total</span>
+        <span className="font-semibold tabular-nums">148,240</span>
+      </div>
+    </PageShell>
+  );
+}
+
+function RecurringPage() {
+  const rows = [
+    { name: 'Rent', date: '1 Oct', amount: '15,000' },
+    { name: 'Gym', date: '3 Oct', amount: '3,500' },
+    { name: 'Phone plan', date: '5 Oct', amount: '1,200' },
+  ];
+
+  return (
+    <PageShell title="Recurring" meta="Next 7 days">
+      <div className="mt-3 flex flex-col gap-2.5">
+        {rows.map((row) => (
+          <div key={row.name} className="flex items-center gap-2 text-[11.5px]">
+            <span className="flex-1 whitespace-nowrap font-medium">{row.name}</span>
+            <span className="whitespace-nowrap text-[10px] text-ink/45">{row.date}</span>
+            <span className="w-12 text-right font-semibold tabular-nums">{row.amount}</span>
+          </div>
+        ))}
+      </div>
+    </PageShell>
+  );
+}
+
+function TenantRentPage() {
+  return (
+    <PageShell title="Rent, tenant">
+      <p className="mt-2.5 text-[10.5px] text-ink/50">You owe the landlord</p>
+      <p className="text-[23px] font-semibold leading-tight tabular-nums text-amber-700">15,000</p>
+      <div className="mt-2.5 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">Due on</span>
+        <span className="font-medium">1 Oct</span>
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-[11px]">
+        <span className="text-ink/50">Last paid</span>
+        <span className="font-medium">1 Sep</span>
+      </div>
+    </PageShell>
+  );
+}
+
+function SpendingPage() {
+  const bars = [10, 16, 13, 22, 15, 20];
+
+  return (
+    <PageShell title="Spending" meta="This month">
+      <p className="mt-2.5 text-[23px] font-semibold leading-tight tabular-nums">84,300</p>
+      <div className="mt-2 flex h-7 items-end gap-1.5">
+        {bars.map((height, i) => (
+          <div key={i} className="w-full rounded-sm bg-ink/70" style={{ height }} />
+        ))}
+      </div>
+      <p className="mt-2 text-[10.5px] text-emerald-700">Down 6% from August</p>
+    </PageShell>
+  );
+}
+
+const slots = [
+  { side: 'left', top: 110 },
+  { side: 'right', top: 200 },
+  { side: 'left', top: 306 },
+  { side: 'right', top: 376 },
+];
+
+const pageSets = [
+  [LoansPage, CommitteePage, RentPage, SalaryPage],
+  [BillsPage, SplitPage, BudgetPage, GoalPage],
+  [AccountsPage, RecurringPage, TenantRentPage, SpendingPage],
 ];
 
 const SHRUNK = 0.3;
@@ -383,8 +557,8 @@ function pageVariants(reduce) {
   };
 }
 
-function FlyingPage({ config, order, open, reduce, variants }) {
-  const { side, top, tilt, Page } = config;
+function FlyingPage({ slot, Page, order, open, reduce, variants }) {
+  const { side, top } = slot;
   const isRight = side === 'right';
   const left = isRight ? RIGHT_EDGE : LEFT_EDGE;
   const originX = isRight ? 0 : 1;
@@ -393,9 +567,9 @@ function FlyingPage({ config, order, open, reduce, variants }) {
     hiddenX: CENTER_X - left - originX * CARD_W - (0.5 - originX) * CARD_W * SHRUNK,
     hiddenY: CENTER_Y - top - CARD_H / 2,
     turn: isRight ? -RIGHT_TURN : LEFT_TURN,
-    tilt,
+    tilt: 0,
     inDelay: order * 0.16,
-    outDelay: (pages.length - 1 - order) * 0.07,
+    outDelay: (slots.length - 1 - order) * 0.07,
   };
 
   return (
@@ -475,6 +649,7 @@ function AuthVisual() {
   const reduce = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState(false);
+  const [group, setGroup] = useState(0);
   const wrapRef = useRef(null);
   const scale = useFitScale(wrapRef);
   const variants = pageVariants(reduce);
@@ -493,11 +668,18 @@ function AuthVisual() {
     }
 
     let timer;
-    const step = (next) => {
-      setOpen(next);
-      timer = setTimeout(() => step(!next), next ? OPEN_MS : CLOSED_MS);
+    const openPhase = () => {
+      setOpen(true);
+      timer = setTimeout(closePhase, OPEN_MS);
     };
-    timer = setTimeout(() => step(true), 500);
+    const closePhase = () => {
+      setOpen(false);
+      timer = setTimeout(() => {
+        setGroup((prev) => (prev + 1) % pageSets.length);
+        openPhase();
+      }, CLOSED_MS);
+    };
+    timer = setTimeout(openPhase, 500);
     return () => clearTimeout(timer);
   }, [reduce]);
 
@@ -549,10 +731,11 @@ function AuthVisual() {
           <Callout index={index} />
         </motion.div>
 
-        {pages.map((config, order) => (
+        {pageSets[group].map((Page, order) => (
           <FlyingPage
-            key={config.Page.name}
-            config={config}
+            key={`${group}-${order}`}
+            slot={slots[order]}
+            Page={Page}
             order={order}
             open={open}
             reduce={reduce}
