@@ -155,10 +155,117 @@ function CardHeader({ icon: Icon, label }) {
   );
 }
 
-const screens = [OverviewCard, LoansCard, CommitteesCard, BillsCard];
-const SCREEN_DURATION = 2600;
+const screens = [
+  { Component: OverviewCard },
+  { Component: LoansCard },
+  { Component: CommitteesCard },
+  { Component: BillsCard },
+];
 
-function PhoneScreen() {
+const callouts = [
+  { text: 'Real-time balance across accounts', dotTop: 24, dotLeft: 50, align: 'center' },
+  { text: 'See exactly who owes who', dotTop: 45, dotLeft: 26, align: 'left' },
+  { text: 'Follow every committee round', dotTop: 42, dotLeft: 50, align: 'center' },
+  { text: 'Split any bill in seconds', dotTop: 30, dotLeft: 50, align: 'center' },
+];
+
+const SCREEN_DURATION = 2800;
+const LABEL_TOP = -15;
+
+function PhoneScreen({ index }) {
+  const ActiveCard = screens[index].Component;
+
+  return (
+    <div className="flex h-full w-full flex-col bg-gradient-to-b from-[#101015] to-[#0a0a0d] p-3">
+      <div className="flex items-center justify-between px-0.5">
+        <span className="text-[10px] font-medium text-white/50">9:41</span>
+        <div className="flex items-center gap-0.5">
+          <span className="h-1.5 w-0.5 rounded-full bg-white/40" />
+          <span className="h-2 w-0.5 rounded-full bg-white/40" />
+          <span className="h-2.5 w-0.5 rounded-full bg-white/60" />
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-between px-0.5">
+        <span className="text-[9px] font-semibold tracking-wide text-white/60">VAULTRIX</span>
+        <div className="h-3 w-3 rounded-full bg-white/20" />
+      </div>
+
+      <div className="relative mt-3 flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="h-full text-[10px]"
+          >
+            <ActiveCard />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="mt-2.5 flex items-center justify-center gap-1 pt-1.5">
+        {screens.map((_, dotIndex) => (
+          <span
+            key={dotIndex}
+            className={`h-1 rounded-full transition-all duration-300 ${
+              dotIndex === index ? 'w-4 bg-white/70' : 'w-1 bg-white/25'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Callout({ callout, index }) {
+  const alignOffset = { left: '0%', center: '-50%', right: '-100%' }[callout.align];
+  const lineHeight = `calc(${callout.dotTop - LABEL_TOP}% - 22px)`;
+
+  return (
+    <motion.div
+      key={index}
+      className="pointer-events-none absolute inset-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+    >
+      <div
+        className="absolute whitespace-nowrap rounded-lg border border-white/15 bg-[#17171c]/95 px-2.5 py-1.5 text-[11px] font-medium text-white/90 shadow-xl backdrop-blur-sm"
+        style={{
+          top: `${LABEL_TOP}%`,
+          left: `${callout.dotLeft}%`,
+          transform: `translateX(${alignOffset})`,
+        }}
+      >
+        {callout.text}
+      </div>
+
+      <div
+        className="absolute w-px bg-white/30"
+        style={{
+          top: `calc(${LABEL_TOP}% + 22px)`,
+          left: `${callout.dotLeft}%`,
+          height: lineHeight,
+        }}
+      />
+
+      <span
+        className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/25"
+        style={{ top: `${callout.dotTop}%`, left: `${callout.dotLeft}%` }}
+      />
+      <span
+        className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
+        style={{ top: `${callout.dotTop}%`, left: `${callout.dotLeft}%` }}
+      />
+    </motion.div>
+  );
+}
+
+function AuthVisual() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -168,65 +275,17 @@ function PhoneScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const ActiveCard = screens[index];
-
   return (
-    <div className="flex h-full w-full flex-col bg-gradient-to-b from-[#101015] to-[#0a0a0d] p-2.5">
-      <div className="flex items-center justify-between px-0.5">
-        <span className="text-[9px] font-medium text-white/50">9:41</span>
-        <div className="flex items-center gap-0.5">
-          <span className="h-1.5 w-0.5 rounded-full bg-white/40" />
-          <span className="h-2 w-0.5 rounded-full bg-white/40" />
-          <span className="h-2.5 w-0.5 rounded-full bg-white/60" />
-        </div>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between px-0.5">
-        <span className="text-[8px] font-semibold tracking-wide text-white/60">VAULTRIX</span>
-        <div className="h-2.5 w-2.5 rounded-full bg-white/20" />
-      </div>
-
-      <div className="relative mt-2.5 flex-1 overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="h-full"
-          >
-            <ActiveCard />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      <div className="mt-2 flex items-center justify-center gap-1 pt-1.5">
-        {screens.map((_, dotIndex) => (
-          <span
-            key={dotIndex}
-            className={`h-1 rounded-full transition-all duration-300 ${
-              dotIndex === index ? 'w-3.5 bg-white/70' : 'w-1 bg-white/25'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AuthVisual() {
-  return (
-    <div className="relative flex h-80 items-center md:h-96">
-      <div className="relative ml-4 h-[272px] w-[160px] md:h-[300px] md:w-[176px]">
+    <div className="relative flex h-[470px] items-center lg:h-[510px]">
+      <div className="relative ml-4 h-[380px] w-[220px] lg:h-[424px] lg:w-[248px]">
         <motion.div
-          className="absolute inset-0 -z-10 rounded-[2.4rem] bg-white/[0.06] blur-2xl"
+          className="absolute inset-0 -z-10 rounded-[2.6rem] bg-white/[0.06] blur-2xl"
           animate={{ opacity: [0.4, 0.7, 0.4] }}
           transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         />
 
         <motion.div
-          className="relative h-full w-full rounded-[2rem] border border-white/15 bg-white/[0.03] p-1.5 shadow-2xl"
+          className="relative h-full w-full rounded-[2.2rem] border border-white/15 bg-white/[0.03] p-2 shadow-2xl"
           initial={{ opacity: 0, y: 10, scale: 0.97 }}
           animate={{ opacity: 1, y: [0, -6, 0], scale: 1 }}
           transition={{
@@ -235,10 +294,14 @@ function AuthVisual() {
             y: { duration: 4.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
           }}
         >
-          <div className="absolute left-1/2 top-1.5 h-1 w-7 -translate-x-1/2 rounded-full bg-white/25" />
-          <div className="h-full w-full overflow-hidden rounded-[1.4rem]">
-            <PhoneScreen />
+          <div className="absolute left-1/2 top-2 h-1 w-8 -translate-x-1/2 rounded-full bg-white/25" />
+          <div className="h-full w-full overflow-hidden rounded-[1.6rem]">
+            <PhoneScreen index={index} />
           </div>
+
+          <AnimatePresence mode="wait">
+            <Callout key={index} callout={callouts[index]} index={index} />
+          </AnimatePresence>
         </motion.div>
       </div>
     </div>
