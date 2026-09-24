@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
     authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
     googleId: { type: String },
     role: { type: String, enum: ['owner', 'admin', 'member', 'viewer'], default: 'owner' },
+    plan: { type: String, enum: ['standard', 'premium'], default: 'standard' },
     country: { type: String },
     currency: { type: String, default: 'PKR' },
     language: { type: String, default: 'en' },

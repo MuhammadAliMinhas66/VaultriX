@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
@@ -10,7 +10,9 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSession } = useAuth();
+  const redirectTo = location.state?.from?.pathname || '/dashboard';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +33,7 @@ function LoginPage() {
     try {
       const data = await login({ email, password });
       setSession(data);
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       setFormError(error.message);
     } finally {
@@ -45,7 +47,7 @@ function LoginPage() {
     try {
       const data = await googleAuth(idToken);
       setSession(data);
-      navigate('/dashboard');
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       setFormError(error.message);
     } finally {

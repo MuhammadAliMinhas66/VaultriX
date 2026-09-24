@@ -29,6 +29,20 @@ export const logout = async () => {
   }
 };
 
+export const refresh = async () => {
+  try {
+    const { data } = await api.post('/auth/refresh');
+    return data;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const me = async () => {
+  const { data } = await api.get('/auth/me');
+  return data;
+};
+
 export const googleAuth = async (idToken) => {
   try {
     const { data } = await api.post('/auth/google', { idToken });

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
-import { signAccessToken, signRefreshToken } from '../utils/tokens.js';
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens.js';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -20,6 +20,7 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  plan: user.plan,
   currency: user.currency,
   language: user.language,
   country: user.country,
@@ -107,6 +108,47 @@ export const login = async (req, res, next) => {
 export const logout = async (req, res) => {
   res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
   res.json({ success: true });
+};
+
+export const refresh = async (req, res) => {
+  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Please sign in to continue.' });
+  }
+
+  try {
+    const payload = verifyRefreshToken(token);
+    const user = await User.findById(payload.sub);
+
+    if (!user || (user.tokenVersion || 0) !== payload.tokenVersion) {
+      res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
+      return res.status(401).json({ success: false, message: 'Please sign in again.' });
+    }
+
+    const accessToken = signAccessToken(user);
+    const newRefreshToken = signRefreshToken(user);
+
+    res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, refreshCookieOptions);
+    res.json({ success: true, accessToken, user: publicUser(user) });
+  } catch (error) {
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
+    res.status(401).json({ success: false, message: 'Please sign in again.' });
+  }
+};
+
+export const me = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Please sign in again.' });
+    }
+
+    res.json({ success: true, user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const googleAuth = async (req, res, next) => {
