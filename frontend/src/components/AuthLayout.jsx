@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Lock } from 'lucide-react';
 import AuthVisual from './AuthVisual.jsx';
 
 function AuthLayout({ title, subtitle, children }) {
@@ -13,14 +13,9 @@ function AuthLayout({ title, subtitle, children }) {
 
         <AuthVisual />
 
-        <div className="max-w-sm">
-          <p className="text-2xl font-medium leading-snug">
-            One place for everything you owe, everything owed to you, and everything you earn.
-          </p>
-          <p className="mt-4 text-sm text-white/60">
-            Accounts, bills, rent, loans and committees, tracked correctly, down to the last unit
-            of currency.
-          </p>
+        <div className="flex items-center gap-2 text-sm text-white/60">
+          <Lock className="h-4 w-4 flex-shrink-0" />
+          <span>Your financial data is encrypted and never shared.</span>
         </div>
       </div>
 
