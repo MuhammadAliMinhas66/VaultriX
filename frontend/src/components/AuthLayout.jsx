@@ -22,7 +22,6 @@ function AuthLayout({ title, subtitle, children }) {
             of currency.
           </p>
         </div>
-        <p className="text-xs text-white/40">Built for people who actually track their money.</p>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-12">
