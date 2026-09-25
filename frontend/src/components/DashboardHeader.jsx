@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
+import Logo from './Logo.jsx';
 
 function DashboardHeader() {
   const { user } = useAuth();
@@ -9,12 +9,7 @@ function DashboardHeader() {
 
   return (
     <header className="flex items-center justify-between border-b border-border px-6 py-4">
-      <div className="flex items-center gap-2 text-ink">
-        <ShieldCheck className="h-5 w-5" />
-        <span className="text-lg font-semibold" style={{ fontFamily: "'Sora', 'Inter', sans-serif" }}>
-          Vaultrix
-        </span>
-      </div>
+      <Logo size="sm" />
 
       <Link
         to="/settings"

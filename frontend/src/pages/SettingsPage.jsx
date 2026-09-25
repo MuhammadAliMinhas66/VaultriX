@@ -4,10 +4,14 @@ import { Camera, Loader2 } from 'lucide-react';
 import DashboardHeader from '../components/DashboardHeader.jsx';
 import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
+import Combobox from '../components/Combobox.jsx';
+import AlertBanner from '../components/AlertBanner.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { updateProfile, changePassword, uploadAvatar } from '../services/userService.js';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
+import { COUNTRIES } from '../utils/countries.js';
 import { CURRENCIES, LANGUAGES } from '../utils/options.js';
+import { useTranslation } from '../i18n/useTranslation.js';
 
 function SettingsCard({ title, subtitle, children }) {
   return (
@@ -24,17 +28,9 @@ function SettingsCard({ title, subtitle, children }) {
   );
 }
 
-function Banner({ tone, message }) {
-  if (!message) return null;
-  const tones = {
-    error: 'bg-red-50 text-red-600',
-    success: 'bg-emerald-50 text-emerald-600',
-  };
-  return <div className={`mt-4 rounded-lg px-3.5 py-2.5 text-sm ${tones[tone]}`}>{message}</div>;
-}
-
 function ProfileSection() {
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
   const inputRef = useRef(null);
 
   const [name, setName] = useState(user?.name || '');
@@ -84,7 +80,7 @@ function ProfileSection() {
   };
 
   return (
-    <SettingsCard title="Profile" subtitle="Your name and photo, visible across your workspace.">
+    <SettingsCard title={t('settings.profileTitle')} subtitle={t('settings.profileSubtitle')}>
       <div className="flex items-center gap-4">
         <input
           ref={inputRef}
@@ -111,33 +107,40 @@ function ProfileSection() {
           </span>
         </button>
         <div>
-          <p className="text-sm font-medium text-ink">Profile photo</p>
+          <p className="text-sm font-medium text-ink">{t('settings.photoLabel')}</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
             className="text-sm text-muted hover:text-ink"
           >
-            Change photo
+            {t('settings.changePhoto')}
           </button>
         </div>
       </div>
 
       <form onSubmit={handleNameSave} className="mt-6 flex flex-col gap-4">
-        <FormField label="Full name" value={name} onChange={(event) => setName(event.target.value)} />
+        <FormField
+          label={t('settings.fullName')}
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
         <div>
           <Button type="submit" loading={savingName}>
-            Save name
+            {t('settings.saveName')}
           </Button>
         </div>
       </form>
 
-      <Banner tone={status.tone} message={status.message} />
+      <div className="mt-4">
+        <AlertBanner tone={status.tone} message={status.message} />
+      </div>
     </SettingsCard>
   );
 }
 
 function PasswordSection() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -146,10 +149,8 @@ function PasswordSection() {
 
   if (user?.authProvider === 'google') {
     return (
-      <SettingsCard title="Password" subtitle="How you sign in to Vaultrix.">
-        <p className="text-sm text-muted">
-          Your account signs in with Google, so there is no password to manage here.
-        </p>
+      <SettingsCard title={t('settings.passwordTitle')} subtitle={t('settings.passwordSubtitle')}>
+        <p className="text-sm text-muted">{t('settings.googleNoPassword')}</p>
       </SettingsCard>
     );
   }
@@ -183,17 +184,17 @@ function PasswordSection() {
   };
 
   return (
-    <SettingsCard title="Password" subtitle="Change the password you use to sign in.">
+    <SettingsCard title={t('settings.passwordTitle')} subtitle={t('settings.passwordSubtitle')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormField
-          label="Current password"
+          label={t('settings.currentPassword')}
           type="password"
           value={currentPassword}
           onChange={(event) => setCurrentPassword(event.target.value)}
           autoComplete="current-password"
         />
         <FormField
-          label="New password"
+          label={t('settings.newPassword')}
           type="password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
@@ -201,7 +202,7 @@ function PasswordSection() {
           autoComplete="new-password"
         />
         <FormField
-          label="Confirm new password"
+          label={t('settings.confirmPassword')}
           type="password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
@@ -209,26 +210,35 @@ function PasswordSection() {
         />
         <div>
           <Button type="submit" loading={saving}>
-            Update password
+            {t('settings.updatePassword')}
           </Button>
         </div>
       </form>
-      <Banner tone={status.tone} message={status.message} />
+      <div className="mt-4">
+        <AlertBanner tone={status.tone} message={status.message} />
+      </div>
     </SettingsCard>
   );
 }
 
 function PreferencesSection() {
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
   const [country, setCountry] = useState(user?.country || '');
-  const [language, setLanguage] = useState(user?.language || 'en');
-  const [currency, setCurrency] = useState(user?.currency || 'PKR');
+  const [language, setLanguage] = useState(user?.language || '');
+  const [currency, setCurrency] = useState(user?.currency || '');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState({ tone: '', message: '' });
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus({ tone: '', message: '' });
+
+    if (!country || !language || !currency) {
+      setStatus({ tone: 'error', message: t('onboarding.selectRequired') });
+      return;
+    }
+
     setSaving(true);
     try {
       const data = await updateProfile({ country, language, currency });
@@ -242,58 +252,46 @@ function PreferencesSection() {
   };
 
   return (
-    <SettingsCard title="Preferences" subtitle="Country, language and default currency.">
+    <SettingsCard title={t('settings.preferencesTitle')} subtitle={t('settings.preferencesSubtitle')}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <FormField
-          label="Country"
+        <Combobox
+          label={t('dashboard.country')}
+          items={COUNTRIES}
           value={country}
-          onChange={(event) => setCountry(event.target.value)}
-          placeholder="e.g. Pakistan"
+          onChange={setCountry}
+          placeholder="Search countries"
         />
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-ink">Language</label>
-          <select
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-            className="w-full rounded-lg border border-border px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-          >
-            {LANGUAGES.map((option) => (
-              <option key={option.code} value={option.code}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-ink">Currency</label>
-          <select
-            value={currency}
-            onChange={(event) => setCurrency(event.target.value)}
-            className="w-full rounded-lg border border-border px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-          >
-            {CURRENCIES.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Combobox
+          label={t('dashboard.language')}
+          items={LANGUAGES}
+          value={language}
+          onChange={setLanguage}
+          placeholder="Search languages"
+        />
+        <Combobox
+          label={t('dashboard.currency')}
+          items={CURRENCIES}
+          value={currency}
+          onChange={setCurrency}
+          placeholder="Search currencies"
+        />
 
         <div>
           <Button type="submit" loading={saving}>
-            Save preferences
+            {t('settings.savePreferences')}
           </Button>
         </div>
       </form>
-      <Banner tone={status.tone} message={status.message} />
+      <div className="mt-4">
+        <AlertBanner tone={status.tone} message={status.message} />
+      </div>
     </SettingsCard>
   );
 }
 
 function SettingsPage() {
   const { signOut } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-surface">
@@ -301,12 +299,12 @@ function SettingsPage() {
 
       <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-10">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-ink">Account settings</h1>
+          <h1 className="text-2xl font-semibold text-ink">{t('settings.title')}</h1>
           <button
             onClick={signOut}
             className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.03]"
           >
-            Sign out
+            {t('settings.signOut')}
           </button>
         </div>
 

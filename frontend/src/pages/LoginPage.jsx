@@ -6,6 +6,7 @@ import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
+import AlertBanner from '../components/AlertBanner.jsx';
 import { login, googleAuth } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -110,9 +111,7 @@ function LoginPage() {
           </Link>
         </div>
 
-        {formError && (
-          <div className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{formError}</div>
-        )}
+        <AlertBanner tone="error" message={formError} />
 
         <Button type="submit" loading={loading}>
           Sign in

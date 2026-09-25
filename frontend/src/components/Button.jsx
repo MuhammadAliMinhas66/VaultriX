@@ -1,8 +1,8 @@
-function Button({ children, loading, ...rest }) {
+function Button({ children, loading, disabled, ...rest }) {
   return (
     <button
       className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={loading || rest.disabled}
+      disabled={loading || disabled}
       {...rest}
     >
       {loading && (

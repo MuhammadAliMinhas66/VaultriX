@@ -1,15 +1,22 @@
 import { useRef, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Languages, Wallet, Camera, ShieldCheck } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import Button from '../components/Button.jsx';
-import FormField from '../components/FormField.jsx';
+import Combobox from '../components/Combobox.jsx';
+import AlertBanner from '../components/AlertBanner.jsx';
+import Logo from '../components/Logo.jsx';
+import PageLoader from '../components/PageLoader.jsx';
+import { CountryIcon, LanguageIcon, CurrencyIcon } from '../components/icons/StepIcons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { updateProfile, uploadAvatar } from '../services/userService.js';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
-import { CURRENCIES, LANGUAGES } from '../utils/options.js';
+import { COUNTRIES } from '../utils/countries.js';
+import { CURRENCIES } from '../utils/options.js';
+import { LANGUAGES } from '../utils/options.js';
+import { useTranslation } from '../i18n/useTranslation.js';
 
-function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect }) {
+function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect, prompt }) {
   const inputRef = useRef(null);
   const displaySrc = previewUrl || resolveAvatarUrl(existingAvatarUrl);
 
@@ -40,9 +47,7 @@ function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect }) {
           <Camera className="h-5 w-5" />
         </span>
       </motion.button>
-      <p className="mt-3 text-xs text-muted">
-        {file ? file.name : 'Tap to upload a profile photo'}
-      </p>
+      <p className="mt-3 text-xs text-muted">{file ? file.name : prompt}</p>
     </div>
   );
 }
@@ -52,22 +57,36 @@ const steps = ['country', 'language', 'currency', 'photo'];
 function OnboardingPage() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const { t } = useTranslation();
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [country, setCountry] = useState(user?.country || '');
-  const [language, setLanguage] = useState(user?.language || 'en');
-  const [currency, setCurrency] = useState(user?.currency || 'PKR');
+  const [country, setCountry] = useState('');
+  const [language, setLanguage] = useState('');
+  const [currency, setCurrency] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [welcoming, setWelcoming] = useState(false);
 
   const activeSteps = user?.avatarUrl ? steps.slice(0, 3) : steps;
   const currentStep = activeSteps[stepIndex];
   const isLastStep = stepIndex === activeSteps.length - 1;
 
+  const requiredValueByStep = { country, language, currency, photo: 'optional' };
+  const canContinue = Boolean(requiredValueByStep[currentStep]);
+
   if (user?.onboardingCompleted) {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (welcoming) {
+    return (
+      <PageLoader
+        title={t('onboarding.welcomeTitle', { name: user?.name?.split(' ')[0] || '' })}
+        label={t('onboarding.welcomeSubtitle')}
+      />
+    );
   }
 
   const handlePhotoSelect = (file) => {
@@ -82,11 +101,21 @@ function OnboardingPage() {
     }
     const data = await updateProfile({ completeOnboarding: true });
     updateUser(data.user);
-    navigate('/dashboard', { replace: true });
+
+    setWelcoming(true);
+    setTimeout(() => {
+      navigate('/dashboard', { replace: true });
+    }, 1600);
   };
 
   const handleContinue = async () => {
     setError('');
+
+    if (!canContinue) {
+      setError(t('onboarding.selectRequired'));
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (currentStep === 'country') {
@@ -117,9 +146,7 @@ function OnboardingPage() {
     setError('');
     setSubmitting(true);
     try {
-      const data = await updateProfile({ completeOnboarding: true });
-      updateUser(data.user);
-      navigate('/dashboard', { replace: true });
+      await finish();
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -133,14 +160,9 @@ function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center bg-background px-6 py-12">
-      <div className="flex items-center gap-2 text-ink">
-        <ShieldCheck className="h-5 w-5" />
-        <span className="text-lg font-semibold" style={{ fontFamily: "'Sora', 'Inter', sans-serif" }}>
-          Vaultrix
-        </span>
-      </div>
+      <Logo size="sm" />
 
-      <div className="mt-2 flex items-center gap-1.5">
+      <div className="mt-6 flex items-center gap-1.5">
         {activeSteps.map((step, index) => (
           <span
             key={step}
@@ -162,73 +184,41 @@ function OnboardingPage() {
           >
             {currentStep === 'country' && (
               <div>
-                <Globe className="h-6 w-6 text-ink" />
-                <h1 className="mt-3 text-xl font-semibold text-ink">Where are you based?</h1>
-                <p className="mt-1 text-sm text-muted">
-                  This helps us show the right tax rules and formats later.
-                </p>
+                <CountryIcon className="h-6 w-6 text-ink" />
+                <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.countryTitle')}</h1>
+                <p className="mt-1 text-sm text-muted">{t('onboarding.countrySubtitle')}</p>
                 <div className="mt-6">
-                  <FormField
-                    label="Country"
-                    value={country}
-                    onChange={(event) => setCountry(event.target.value)}
-                    placeholder="e.g. Pakistan"
-                    autoFocus
-                  />
+                  <Combobox items={COUNTRIES} value={country} onChange={setCountry} placeholder="Search countries" />
                 </div>
               </div>
             )}
 
             {currentStep === 'language' && (
               <div>
-                <Languages className="h-6 w-6 text-ink" />
-                <h1 className="mt-3 text-xl font-semibold text-ink">Pick your language</h1>
-                <p className="mt-1 text-sm text-muted">You can change this anytime in settings.</p>
-                <div className="mt-6 flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-ink">Language</label>
-                  <select
-                    value={language}
-                    onChange={(event) => setLanguage(event.target.value)}
-                    className="w-full rounded-lg border border-border px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  >
-                    {LANGUAGES.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                <LanguageIcon className="h-6 w-6 text-ink" />
+                <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.languageTitle')}</h1>
+                <p className="mt-1 text-sm text-muted">{t('onboarding.languageSubtitle')}</p>
+                <div className="mt-6">
+                  <Combobox items={LANGUAGES} value={language} onChange={setLanguage} placeholder="Search languages" />
                 </div>
               </div>
             )}
 
             {currentStep === 'currency' && (
               <div>
-                <Wallet className="h-6 w-6 text-ink" />
-                <h1 className="mt-3 text-xl font-semibold text-ink">Choose your currency</h1>
-                <p className="mt-1 text-sm text-muted">
-                  Every account and transaction will default to this.
-                </p>
-                <div className="mt-6 flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-ink">Currency</label>
-                  <select
-                    value={currency}
-                    onChange={(event) => setCurrency(event.target.value)}
-                    className="w-full rounded-lg border border-border px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                  >
-                    {CURRENCIES.map((code) => (
-                      <option key={code} value={code}>
-                        {code}
-                      </option>
-                    ))}
-                  </select>
+                <CurrencyIcon className="h-6 w-6 text-ink" />
+                <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.currencyTitle')}</h1>
+                <p className="mt-1 text-sm text-muted">{t('onboarding.currencySubtitle')}</p>
+                <div className="mt-6">
+                  <Combobox items={CURRENCIES} value={currency} onChange={setCurrency} placeholder="Search currencies" />
                 </div>
               </div>
             )}
 
             {currentStep === 'photo' && (
               <div>
-                <h1 className="text-xl font-semibold text-ink">Add a profile photo</h1>
-                <p className="mt-1 text-sm text-muted">Optional, but it helps on shared accounts.</p>
+                <h1 className="text-xl font-semibold text-ink">{t('onboarding.photoTitle')}</h1>
+                <p className="mt-1 text-sm text-muted">{t('onboarding.photoSubtitle')}</p>
                 <div className="mt-6">
                   <PhotoStep
                     name={user?.name}
@@ -236,6 +226,7 @@ function OnboardingPage() {
                     file={photoFile}
                     previewUrl={previewUrl}
                     onSelect={handlePhotoSelect}
+                    prompt={t('onboarding.uploadPrompt')}
                   />
                 </div>
               </div>
@@ -243,11 +234,11 @@ function OnboardingPage() {
           </motion.div>
         </AnimatePresence>
 
-        {error && (
-          <div className="mt-4 rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{error}</div>
-        )}
+        <div className="mt-4">
+          <AlertBanner tone="error" message={error} />
+        </div>
 
-        <div className="mt-8 flex items-center gap-3">
+        <div className="mt-6 flex items-center gap-3">
           {stepIndex > 0 && (
             <button
               type="button"
@@ -255,11 +246,11 @@ function OnboardingPage() {
               disabled={submitting}
               className="rounded-lg px-4 py-2.5 text-sm font-medium text-muted hover:text-ink"
             >
-              Back
+              {t('onboarding.back')}
             </button>
           )}
-          <Button onClick={handleContinue} loading={submitting}>
-            {isLastStep ? 'Finish' : 'Continue'}
+          <Button onClick={handleContinue} loading={submitting} disabled={!canContinue}>
+            {isLastStep ? t('onboarding.finish') : t('onboarding.continue')}
           </Button>
         </div>
 
@@ -270,7 +261,7 @@ function OnboardingPage() {
             disabled={submitting}
             className="mt-3 text-center text-sm text-muted hover:text-ink"
           >
-            Skip for now
+            {t('onboarding.skip')}
           </button>
         )}
       </div>

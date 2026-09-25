@@ -31,7 +31,7 @@ const publicUser = (user) => ({
 
 export const signup = async (req, res, next) => {
   try {
-    const { name, email, password, currency, country } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email and password are all required.' });
@@ -55,8 +55,6 @@ export const signup = async (req, res, next) => {
       name,
       email: email.toLowerCase(),
       passwordHash,
-      currency: currency || 'PKR',
-      country: country || '',
       role: 'owner',
     });
 
@@ -184,7 +182,6 @@ export const googleAuth = async (req, res, next) => {
         authProvider: 'google',
         googleId: payload.sub,
         avatarUrl: payload.picture || '',
-        currency: 'PKR',
         role: 'owner',
       });
 

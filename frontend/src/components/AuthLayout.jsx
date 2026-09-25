@@ -1,16 +1,12 @@
 import { motion } from 'framer-motion';
 import AuthVisual from './AuthVisual.jsx';
+import Logo from './Logo.jsx';
 
 function AuthLayout({ title, subtitle, children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <div className="hidden flex-1 flex-col bg-ink px-12 pb-10 pt-10 text-white lg:flex xl:px-16">
-        <span
-          className="text-5xl font-extrabold leading-none tracking-tight xl:text-6xl"
-          style={{ fontFamily: 'Syne, "Arial Black", sans-serif' }}
-        >
-          VaultriX
-        </span>
+        <Logo size="lg" dark />
 
         <AuthVisual />
 
