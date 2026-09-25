@@ -5,3 +5,18 @@
 body {
   @apply bg-background text-ink font-sans;
 }
+
+p,
+span,
+label,
+h1,
+h2,
+h3,
+h4,
+a,
+button,
+input,
+textarea,
+li {
+  unicode-bidi: plaintext;
+}

@@ -152,6 +152,46 @@ export const me = async (req, res, next) => {
   }
 };
 
+const resolveGoogleUser = async (idToken) => {
+  const ticket = await googleClient.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+
+  if (!payload?.email) {
+    return null;
+  }
+
+  let user = await User.findOne({ email: payload.email.toLowerCase() });
+
+  if (!user) {
+    const organization = await Organization.create({ name: `${payload.name || payload.email}'s workspace` });
+
+    user = await User.create({
+      orgId: organization._id,
+      name: payload.name || payload.email,
+      email: payload.email.toLowerCase(),
+      authProvider: 'google',
+      googleId: payload.sub,
+      avatarUrl: payload.picture || '',
+      role: 'owner',
+    });
+
+    organization.ownerId = user._id;
+    await organization.save();
+  } else if (user.authProvider !== 'google') {
+    user.authProvider = 'google';
+    user.googleId = payload.sub;
+    if (!user.avatarUrl && payload.picture) {
+      user.avatarUrl = payload.picture;
+    }
+    await user.save();
+  }
+
+  return user;
+};
+
 export const googleAuth = async (req, res, next) => {
   try {
     const { idToken } = req.body;
@@ -160,40 +200,10 @@ export const googleAuth = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Google sign-in did not send back a token.' });
     }
 
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-
-    if (!payload?.email) {
-      return res.status(400).json({ success: false, message: 'Could not read your Google account details.' });
-    }
-
-    let user = await User.findOne({ email: payload.email.toLowerCase() });
+    const user = await resolveGoogleUser(idToken);
 
     if (!user) {
-      const organization = await Organization.create({ name: `${payload.name || payload.email}'s workspace` });
-
-      user = await User.create({
-        orgId: organization._id,
-        name: payload.name || payload.email,
-        email: payload.email.toLowerCase(),
-        authProvider: 'google',
-        googleId: payload.sub,
-        avatarUrl: payload.picture || '',
-        role: 'owner',
-      });
-
-      organization.ownerId = user._id;
-      await organization.save();
-    } else if (user.authProvider !== 'google') {
-      user.authProvider = 'google';
-      user.googleId = payload.sub;
-      if (!user.avatarUrl && payload.picture) {
-        user.avatarUrl = payload.picture;
-      }
-      await user.save();
+      return res.status(400).json({ success: false, message: 'Could not read your Google account details.' });
     }
 
     const accessToken = signAccessToken(user);
@@ -203,5 +213,34 @@ export const googleAuth = async (req, res, next) => {
     res.json({ success: true, accessToken, user: publicUser(user) });
   } catch (error) {
     next(error);
+  }
+};
+
+export const googleCallback = async (req, res) => {
+  const failureUrl = `${process.env.CLIENT_URL}/login?google_error=1`;
+
+  try {
+    const { credential, g_csrf_token: bodyToken } = req.body;
+    const cookieToken = req.cookies?.g_csrf_token;
+
+    if (!credential) {
+      return res.redirect(failureUrl);
+    }
+
+    if (cookieToken && bodyToken && cookieToken !== bodyToken) {
+      return res.redirect(failureUrl);
+    }
+
+    const user = await resolveGoogleUser(credential);
+
+    if (!user) {
+      return res.redirect(failureUrl);
+    }
+
+    const refreshToken = signRefreshToken(user);
+    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+  } catch (error) {
+    res.redirect(failureUrl);
   }
 };

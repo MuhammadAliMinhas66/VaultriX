@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { refresh as refreshSession, logout as logoutRequest } from '../services/authService.js';
 import { setAuthToken, setUnauthorizedHandler } from '../services/api.js';
-import { rtlLanguages } from '../i18n/translations.js';
 import { getStoredLanguage, setStoredLanguage } from '../i18n/languageStorage.js';
 
 const AuthContext = createContext(null);
@@ -54,7 +53,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const language = user?.language || getStoredLanguage() || 'en';
     document.documentElement.lang = language;
-    document.documentElement.dir = rtlLanguages.has(language) ? 'rtl' : 'ltr';
     if (user?.language) setStoredLanguage(user.language);
   }, [user?.language]);
 

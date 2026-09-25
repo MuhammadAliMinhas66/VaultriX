@@ -7,7 +7,7 @@ import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
 import AlertBanner from '../components/AlertBanner.jsx';
-import { login, googleAuth } from '../services/authService.js';
+import { login } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTranslation } from '../i18n/useTranslation.js';
 
@@ -23,7 +23,9 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState(
+    new URLSearchParams(location.search).get('google_error') ? t('auth.googleFailed') : ''
+  );
 
   const proceedAfterAuth = (data) => {
     setSession(data);
@@ -53,25 +55,13 @@ function LoginPage() {
     }
   };
 
-  const handleGoogle = async (idToken) => {
-    setFormError('');
-    setLoading(true);
-    try {
-      const data = await googleAuth(idToken);
-      proceedAfterAuth(data);
-    } catch (error) {
-      setFormError(tServer(error.message));
-      setLoading(false);
-    }
-  };
-
   if (redirecting) {
     return <PageLoader label={t('auth.settingUp')} />;
   }
 
   return (
     <AuthLayout title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
-      <GoogleAuthButton onSuccess={handleGoogle} onError={setFormError} />
+      <GoogleAuthButton onError={setFormError} />
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />

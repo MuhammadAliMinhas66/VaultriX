@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { signup, login, logout, googleAuth, refresh, me } from '../controllers/authController.js';
+import { signup, login, logout, googleAuth, googleCallback, refresh, me } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -8,6 +8,7 @@ router.post('/signup', signup);
 router.post('/login', login);
 router.post('/logout', logout);
 router.post('/google', googleAuth);
+router.post('/google/callback', googleCallback);
 router.post('/refresh', refresh);
 router.get('/me', authenticate, me);
 
