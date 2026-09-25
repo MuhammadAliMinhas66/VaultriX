@@ -1,23 +1,25 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage.jsx';
 import SignupPage from './pages/SignupPage.jsx';
+import OnboardingPage from './pages/OnboardingPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicOnlyRoute from './components/PublicOnlyRoute.jsx';
+import RequireOnboarding from './components/RequireOnboarding.jsx';
+import DashboardHeader from './components/DashboardHeader.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 
 function DashboardPlaceholder() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6">
-      <p className="text-ink">
-        {user ? `Signed in as ${user.name}. Dashboard comes next.` : 'No user in session.'}
-      </p>
-      <button
-        onClick={signOut}
-        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.03]"
-      >
-        Sign out
-      </button>
+    <div className="min-h-screen bg-surface">
+      <DashboardHeader />
+      <div className="flex flex-col items-center justify-center gap-2 px-6 py-24 text-center">
+        <p className="text-ink">
+          {user ? `Signed in as ${user.name}. Dashboard comes next.` : 'No user in session.'}
+        </p>
+        <p className="text-sm text-muted">Your account settings are one tap away, top right.</p>
+      </div>
     </div>
   );
 }
@@ -33,7 +35,12 @@ function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPlaceholder />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+
+        <Route element={<RequireOnboarding />}>
+          <Route path="/dashboard" element={<DashboardPlaceholder />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
       </Route>
 
       <Route path="*" element={<Navigate to="/login" replace />} />

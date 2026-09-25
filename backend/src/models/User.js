@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
     country: { type: String },
     currency: { type: String, default: 'PKR' },
     language: { type: String, default: 'en' },
+    avatarUrl: { type: String, default: '' },
+    onboardingCompleted: { type: Boolean, default: false },
     mfaEnabled: { type: Boolean, default: false },
     mfaSecret: { type: String },
     tokenVersion: { type: Number, default: 0 },

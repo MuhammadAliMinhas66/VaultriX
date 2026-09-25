@@ -5,6 +5,7 @@ import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
+import PageLoader from '../components/PageLoader.jsx';
 import { login, googleAuth } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -18,7 +19,17 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const proceedAfterAuth = (data) => {
+    setSession(data);
+    setRedirecting(true);
+    setTimeout(() => {
+      const destination = data.user.onboardingCompleted ? redirectTo : '/onboarding';
+      navigate(destination, { replace: true });
+    }, 500);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -32,11 +43,9 @@ function LoginPage() {
     setLoading(true);
     try {
       const data = await login({ email, password });
-      setSession(data);
-      navigate(redirectTo, { replace: true });
+      proceedAfterAuth(data);
     } catch (error) {
       setFormError(error.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -46,14 +55,16 @@ function LoginPage() {
     setLoading(true);
     try {
       const data = await googleAuth(idToken);
-      setSession(data);
-      navigate(redirectTo, { replace: true });
+      proceedAfterAuth(data);
     } catch (error) {
       setFormError(error.message);
-    } finally {
       setLoading(false);
     }
   };
+
+  if (redirecting) {
+    return <PageLoader label="Setting things up" />;
+  }
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to keep tracking where your money goes.">

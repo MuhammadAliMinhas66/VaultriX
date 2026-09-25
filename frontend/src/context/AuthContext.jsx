@@ -21,6 +21,10 @@ export function AuthProvider({ children }) {
     setAuthToken(null);
   };
 
+  const updateUser = (partialUser) => {
+    setUser((prev) => (prev ? { ...prev, ...partialUser } : prev));
+  };
+
   const signOut = async () => {
     await logoutRequest();
     clearSession();
@@ -52,6 +56,7 @@ export function AuthProvider({ children }) {
     isBootstrapping,
     setSession,
     clearSession,
+    updateUser,
     signOut,
   };
 

@@ -21,9 +21,12 @@ const publicUser = (user) => ({
   email: user.email,
   role: user.role,
   plan: user.plan,
+  authProvider: user.authProvider,
   currency: user.currency,
   language: user.language,
   country: user.country,
+  avatarUrl: user.avatarUrl,
+  onboardingCompleted: user.onboardingCompleted,
 });
 
 export const signup = async (req, res, next) => {
@@ -180,6 +183,7 @@ export const googleAuth = async (req, res, next) => {
         email: payload.email.toLowerCase(),
         authProvider: 'google',
         googleId: payload.sub,
+        avatarUrl: payload.picture || '',
         currency: 'PKR',
         role: 'owner',
       });
@@ -189,6 +193,9 @@ export const googleAuth = async (req, res, next) => {
     } else if (user.authProvider !== 'google') {
       user.authProvider = 'google';
       user.googleId = payload.sub;
+      if (!user.avatarUrl && payload.picture) {
+        user.avatarUrl = payload.picture;
+      }
       await user.save();
     }
 

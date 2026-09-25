@@ -5,10 +5,9 @@ import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
+import PageLoader from '../components/PageLoader.jsx';
 import { signup, googleAuth } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-const CURRENCIES = ['PKR', 'USD', 'GBP', 'EUR', 'INR', 'AED'];
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -17,10 +16,18 @@ function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [currency, setCurrency] = useState('PKR');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const proceedAfterAuth = (data) => {
+    setSession(data);
+    setRedirecting(true);
+    setTimeout(() => {
+      navigate(data.user.onboardingCompleted ? '/dashboard' : '/onboarding', { replace: true });
+    }, 500);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -38,12 +45,10 @@ function SignupPage() {
 
     setLoading(true);
     try {
-      const data = await signup({ name, email, password, currency });
-      setSession(data);
-      navigate('/dashboard');
+      const data = await signup({ name, email, password });
+      proceedAfterAuth(data);
     } catch (error) {
       setFormError(error.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -53,14 +58,16 @@ function SignupPage() {
     setLoading(true);
     try {
       const data = await googleAuth(idToken);
-      setSession(data);
-      navigate('/dashboard');
+      proceedAfterAuth(data);
     } catch (error) {
       setFormError(error.message);
-    } finally {
       setLoading(false);
     }
   };
+
+  if (redirecting) {
+    return <PageLoader label="Setting things up" />;
+  }
 
   return (
     <AuthLayout title="Create your account" subtitle="Set up Vaultrix in under a minute.">
@@ -108,22 +115,6 @@ function SignupPage() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-ink">Currency</label>
-          <select
-            value={currency}
-            onChange={(event) => setCurrency(event.target.value)}
-            className="w-full rounded-lg border border-border px-3.5 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-          >
-            {CURRENCIES.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </select>
-          <span className="text-xs text-muted">You can change this later in settings.</span>
-        </div>
-
         {formError && (
           <div className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600">{formError}</div>
         )}
@@ -132,6 +123,10 @@ function SignupPage() {
           Create account
         </Button>
       </form>
+
+      <p className="mt-4 text-center text-xs text-muted">
+        You will pick your country, language, currency and photo next.
+      </p>
 
       <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{' '}
