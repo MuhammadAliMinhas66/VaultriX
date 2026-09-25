@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation.js';
 
-function Combobox({ label, items, value, onChange, placeholder = 'Search' }) {
+function Combobox({ label, items, value, onChange, placeholder }) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder || t('common.search');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [highlighted, setHighlighted] = useState(0);
@@ -70,7 +73,7 @@ function Combobox({ label, items, value, onChange, placeholder = 'Search' }) {
           {selected ? (
             <span className="truncate">{selected.label}</span>
           ) : (
-            <span className="text-muted">{placeholder}</span>
+            <span className="text-muted">{resolvedPlaceholder}</span>
           )}
         </span>
         <ChevronDown className={`h-4 w-4 flex-shrink-0 text-muted transition ${open ? 'rotate-180' : ''}`} />
@@ -85,14 +88,14 @@ function Combobox({ label, items, value, onChange, placeholder = 'Search' }) {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder}
+              placeholder={resolvedPlaceholder}
               className="w-full text-sm text-ink outline-none placeholder:text-muted"
             />
           </div>
 
           <div className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 && (
-              <p className="px-3.5 py-2.5 text-sm text-muted">No matches</p>
+              <p className="px-3.5 py-2.5 text-sm text-muted">{t('common.noMatches')}</p>
             )}
             {filtered.map((item, index) => (
               <button

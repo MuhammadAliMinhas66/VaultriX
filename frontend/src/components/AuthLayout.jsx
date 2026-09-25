@@ -17,8 +17,8 @@ function AuthLayout({ title, subtitle, children }) {
 
       <div className="flex flex-1 items-center justify-center px-6 py-12">
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
           className="w-full max-w-sm"
         >

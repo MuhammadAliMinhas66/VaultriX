@@ -30,7 +30,7 @@ function SettingsCard({ title, subtitle, children }) {
 
 function ProfileSection() {
   const { user, updateUser } = useAuth();
-  const { t } = useTranslation();
+  const { t, tServer } = useTranslation();
   const inputRef = useRef(null);
 
   const [name, setName] = useState(user?.name || '');
@@ -49,9 +49,9 @@ function ProfileSection() {
     try {
       const data = await uploadAvatar(file);
       updateUser(data.user);
-      setStatus({ tone: 'success', message: 'Your photo has been updated.' });
+      setStatus({ tone: 'success', message: t('status.photoUpdated') });
     } catch (error) {
-      setStatus({ tone: 'error', message: error.message });
+      setStatus({ tone: 'error', message: tServer(error.message) });
     } finally {
       setUploadingPhoto(false);
       event.target.value = '';
@@ -63,7 +63,7 @@ function ProfileSection() {
     setStatus({ tone: '', message: '' });
 
     if (!name.trim()) {
-      setStatus({ tone: 'error', message: 'Your name cannot be empty.' });
+      setStatus({ tone: 'error', message: t('status.nameEmpty') });
       return;
     }
 
@@ -71,9 +71,9 @@ function ProfileSection() {
     try {
       const data = await updateProfile({ name });
       updateUser(data.user);
-      setStatus({ tone: 'success', message: 'Your name has been updated.' });
+      setStatus({ tone: 'success', message: t('status.nameUpdated') });
     } catch (error) {
-      setStatus({ tone: 'error', message: error.message });
+      setStatus({ tone: 'error', message: tServer(error.message) });
     } finally {
       setSavingName(false);
     }
@@ -132,7 +132,7 @@ function ProfileSection() {
       </form>
 
       <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} />
+        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
       </div>
     </SettingsCard>
   );
@@ -140,7 +140,7 @@ function ProfileSection() {
 
 function PasswordSection() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, tServer } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -160,12 +160,12 @@ function PasswordSection() {
     setStatus({ tone: '', message: '' });
 
     if (newPassword.length < 8) {
-      setStatus({ tone: 'error', message: 'New password needs to be at least 8 characters.' });
+      setStatus({ tone: 'error', message: t('errors.newPasswordTooShort') });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setStatus({ tone: 'error', message: 'New password and confirmation do not match.' });
+      setStatus({ tone: 'error', message: t('status.passwordMismatch') });
       return;
     }
 
@@ -175,9 +175,9 @@ function PasswordSection() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setStatus({ tone: 'success', message: 'Your password has been changed.' });
+      setStatus({ tone: 'success', message: t('status.passwordUpdated') });
     } catch (error) {
-      setStatus({ tone: 'error', message: error.message });
+      setStatus({ tone: 'error', message: tServer(error.message) });
     } finally {
       setSaving(false);
     }
@@ -198,7 +198,7 @@ function PasswordSection() {
           type="password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
-          placeholder="At least 8 characters"
+          placeholder={t('auth.signupPasswordPlaceholder')}
           autoComplete="new-password"
         />
         <FormField
@@ -215,7 +215,7 @@ function PasswordSection() {
         </div>
       </form>
       <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} />
+        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
       </div>
     </SettingsCard>
   );
@@ -223,7 +223,7 @@ function PasswordSection() {
 
 function PreferencesSection() {
   const { user, updateUser } = useAuth();
-  const { t } = useTranslation();
+  const { t, tServer } = useTranslation();
   const [country, setCountry] = useState(user?.country || '');
   const [language, setLanguage] = useState(user?.language || '');
   const [currency, setCurrency] = useState(user?.currency || '');
@@ -243,9 +243,9 @@ function PreferencesSection() {
     try {
       const data = await updateProfile({ country, language, currency });
       updateUser(data.user);
-      setStatus({ tone: 'success', message: 'Your preferences have been saved.' });
+      setStatus({ tone: 'success', message: t('status.preferencesSaved') });
     } catch (error) {
-      setStatus({ tone: 'error', message: error.message });
+      setStatus({ tone: 'error', message: tServer(error.message) });
     } finally {
       setSaving(false);
     }
@@ -259,21 +259,21 @@ function PreferencesSection() {
           items={COUNTRIES}
           value={country}
           onChange={setCountry}
-          placeholder="Search countries"
+          placeholder={t('combobox.searchCountries')}
         />
         <Combobox
           label={t('dashboard.language')}
           items={LANGUAGES}
           value={language}
           onChange={setLanguage}
-          placeholder="Search languages"
+          placeholder={t('combobox.searchLanguages')}
         />
         <Combobox
           label={t('dashboard.currency')}
           items={CURRENCIES}
           value={currency}
           onChange={setCurrency}
-          placeholder="Search currencies"
+          placeholder={t('combobox.searchCurrencies')}
         />
 
         <div>
@@ -283,7 +283,7 @@ function PreferencesSection() {
         </div>
       </form>
       <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} />
+        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
       </div>
     </SettingsCard>
   );

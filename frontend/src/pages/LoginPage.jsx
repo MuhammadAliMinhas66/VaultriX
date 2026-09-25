@@ -9,11 +9,13 @@ import PageLoader from '../components/PageLoader.jsx';
 import AlertBanner from '../components/AlertBanner.jsx';
 import { login, googleAuth } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTranslation } from '../i18n/useTranslation.js';
 
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setSession } = useAuth();
+  const { t, tServer } = useTranslation();
   const redirectTo = location.state?.from?.pathname || '/dashboard';
 
   const [email, setEmail] = useState('');
@@ -37,7 +39,7 @@ function LoginPage() {
     setFormError('');
 
     if (!email || !password) {
-      setFormError('Enter your email and password to continue.');
+      setFormError(t('auth.enterCredentials'));
       return;
     }
 
@@ -46,7 +48,7 @@ function LoginPage() {
       const data = await login({ email, password });
       proceedAfterAuth(data);
     } catch (error) {
-      setFormError(error.message);
+      setFormError(tServer(error.message));
       setLoading(false);
     }
   };
@@ -58,42 +60,42 @@ function LoginPage() {
       const data = await googleAuth(idToken);
       proceedAfterAuth(data);
     } catch (error) {
-      setFormError(error.message);
+      setFormError(tServer(error.message));
       setLoading(false);
     }
   };
 
   if (redirecting) {
-    return <PageLoader label="Setting things up" />;
+    return <PageLoader label={t('auth.settingUp')} />;
   }
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Sign in to keep tracking where your money goes.">
+    <AuthLayout title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
       <GoogleAuthButton onSuccess={handleGoogle} onError={setFormError} />
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted">or</span>
+        <span className="text-xs text-muted">{t('auth.or')}</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormField
-          label="Email"
+          label={t('auth.emailLabel')}
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
         />
 
         <div className="relative">
           <FormField
-            label="Password"
+            label={t('auth.passwordLabel')}
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Your password"
+            placeholder={t('auth.passwordPlaceholder')}
             autoComplete="current-password"
           />
           <button
@@ -107,21 +109,21 @@ function LoginPage() {
 
         <div className="flex justify-end">
           <Link to="/forgot-password" className="text-sm text-muted hover:text-ink">
-            Forgot password?
+            {t('auth.forgotPassword')}
           </Link>
         </div>
 
-        <AlertBanner tone="error" message={formError} />
+        <AlertBanner tone="error" message={formError} onDismiss={() => setFormError('')} />
 
         <Button type="submit" loading={loading}>
-          Sign in
+          {t('auth.signIn')}
         </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted">
-        Don&apos;t have an account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link to="/signup" className="font-medium text-ink hover:underline">
-          Create one
+          {t('auth.createOne')}
         </Link>
       </p>
     </AuthLayout>

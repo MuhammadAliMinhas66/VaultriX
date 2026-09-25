@@ -1,11 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { AlertTriangle, CheckCircle2, X } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation.js';
 
-const tones = {
-  error: 'border-red-500 bg-red-50 text-red-700',
-  success: 'border-emerald-500 bg-emerald-50 text-emerald-700',
+const toneStyles = {
+  error: { icon: AlertTriangle, iconBg: 'bg-red-500' },
+  success: { icon: CheckCircle2, iconBg: 'bg-emerald-500' },
 };
 
-function AlertBanner({ tone = 'error', message }) {
+function AlertBanner({ tone = 'error', message, onDismiss }) {
+  const { t } = useTranslation();
+  const config = toneStyles[tone] || toneStyles.error;
+  const Icon = config.icon;
+
   return (
     <AnimatePresence>
       {message && (
@@ -18,9 +24,22 @@ function AlertBanner({ tone = 'error', message }) {
         >
           <div
             role="alert"
-            className={`rounded-lg border-l-4 px-4 py-3 text-sm font-medium leading-snug break-words ${tones[tone]}`}
+            className="flex items-center gap-3 rounded-xl border border-border bg-white px-3.5 py-3 shadow-lg shadow-black/5"
           >
-            {message}
+            <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg ${config.iconBg}`}>
+              <Icon className="h-4 w-4 text-white" strokeWidth={2.25} />
+            </span>
+            <p className="flex-1 text-sm font-semibold leading-snug text-ink">{message}</p>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                aria-label={t('common.dismiss')}
+                className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-surface hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </motion.div>
       )}

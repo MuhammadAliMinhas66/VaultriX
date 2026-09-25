@@ -9,10 +9,12 @@ import PageLoader from '../components/PageLoader.jsx';
 import AlertBanner from '../components/AlertBanner.jsx';
 import { signup, googleAuth } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useTranslation } from '../i18n/useTranslation.js';
 
 function SignupPage() {
   const navigate = useNavigate();
   const { setSession } = useAuth();
+  const { t, tServer } = useTranslation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,12 +37,12 @@ function SignupPage() {
     setFormError('');
 
     if (!name || !email || !password) {
-      setFormError('Fill in your name, email and password to continue.');
+      setFormError(t('auth.fillRequired'));
       return;
     }
 
     if (password.length < 8) {
-      setFormError('Password needs to be at least 8 characters.');
+      setFormError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -49,7 +51,7 @@ function SignupPage() {
       const data = await signup({ name, email, password });
       proceedAfterAuth(data);
     } catch (error) {
-      setFormError(error.message);
+      setFormError(tServer(error.message));
       setLoading(false);
     }
   };
@@ -61,50 +63,50 @@ function SignupPage() {
       const data = await googleAuth(idToken);
       proceedAfterAuth(data);
     } catch (error) {
-      setFormError(error.message);
+      setFormError(tServer(error.message));
       setLoading(false);
     }
   };
 
   if (redirecting) {
-    return <PageLoader label="Setting things up" />;
+    return <PageLoader label={t('auth.settingUp')} />;
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Set up Vaultrix in under a minute.">
+    <AuthLayout title={t('auth.signupTitle')} subtitle={t('auth.signupSubtitle')}>
       <GoogleAuthButton onSuccess={handleGoogle} onError={setFormError} />
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted">or</span>
+        <span className="text-xs text-muted">{t('auth.or')}</span>
         <div className="h-px flex-1 bg-border" />
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <FormField
-          label="Full name"
+          label={t('auth.fullNameLabel')}
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="Your name"
+          placeholder={t('auth.fullNamePlaceholder')}
           autoComplete="name"
         />
 
         <FormField
-          label="Email"
+          label={t('auth.emailLabel')}
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
         />
 
         <div className="relative">
           <FormField
-            label="Password"
+            label={t('auth.passwordLabel')}
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
+            placeholder={t('auth.signupPasswordPlaceholder')}
             autoComplete="new-password"
           />
           <button
@@ -116,21 +118,19 @@ function SignupPage() {
           </button>
         </div>
 
-        <AlertBanner tone="error" message={formError} />
+        <AlertBanner tone="error" message={formError} onDismiss={() => setFormError('')} />
 
         <Button type="submit" loading={loading}>
-          Create account
+          {t('auth.createAccount')}
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-xs text-muted">
-        You will pick your country, language, currency and photo next.
-      </p>
+      <p className="mt-4 text-center text-xs text-muted">{t('auth.onboardingNote')}</p>
 
       <p className="mt-6 text-center text-sm text-muted">
-        Already have an account?{' '}
+        {t('auth.haveAccount')}{' '}
         <Link to="/login" className="font-medium text-ink hover:underline">
-          Sign in
+          {t('auth.signInLink')}
         </Link>
       </p>
     </AuthLayout>

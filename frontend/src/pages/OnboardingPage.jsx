@@ -57,7 +57,7 @@ const steps = ['country', 'language', 'currency', 'photo'];
 function OnboardingPage() {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
-  const { t } = useTranslation();
+  const { t, tServer } = useTranslation();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [country, setCountry] = useState('');
@@ -136,7 +136,7 @@ function OnboardingPage() {
 
       setStepIndex((prev) => prev + 1);
     } catch (err) {
-      setError(err.message);
+      setError(tServer(err.message));
     } finally {
       setSubmitting(false);
     }
@@ -148,7 +148,7 @@ function OnboardingPage() {
     try {
       await finish();
     } catch (err) {
-      setError(err.message);
+      setError(tServer(err.message));
       setSubmitting(false);
     }
   };
@@ -188,7 +188,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.countryTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.countrySubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={COUNTRIES} value={country} onChange={setCountry} placeholder="Search countries" />
+                  <Combobox items={COUNTRIES} value={country} onChange={setCountry} placeholder={t('combobox.searchCountries')} />
                 </div>
               </div>
             )}
@@ -199,7 +199,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.languageTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.languageSubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={LANGUAGES} value={language} onChange={setLanguage} placeholder="Search languages" />
+                  <Combobox items={LANGUAGES} value={language} onChange={setLanguage} placeholder={t('combobox.searchLanguages')} />
                 </div>
               </div>
             )}
@@ -210,7 +210,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.currencyTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.currencySubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={CURRENCIES} value={currency} onChange={setCurrency} placeholder="Search currencies" />
+                  <Combobox items={CURRENCIES} value={currency} onChange={setCurrency} placeholder={t('combobox.searchCurrencies')} />
                 </div>
               </div>
             )}
@@ -235,7 +235,7 @@ function OnboardingPage() {
         </AnimatePresence>
 
         <div className="mt-4">
-          <AlertBanner tone="error" message={error} />
+          <AlertBanner tone="error" message={error} onDismiss={() => setError('')} />
         </div>
 
         <div className="mt-6 flex items-center gap-3">
