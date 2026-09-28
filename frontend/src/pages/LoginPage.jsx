@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout.jsx';
@@ -6,10 +6,12 @@ import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
-import AlertBanner from '../components/AlertBanner.jsx';
 import { login } from '../services/authService.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTranslation } from '../i18n/useTranslation.js';
+import { notify } from '../i18n/notifications.js';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -23,9 +25,14 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
-  const [formError, setFormError] = useState(
-    new URLSearchParams(location.search).get('google_error') ? t('auth.googleFailed') : ''
-  );
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('google_error')) {
+      notify.error(t('auth.googleFailed'));
+      navigate('/login', { replace: true });
+    }
+  }, []);
 
   const proceedAfterAuth = (data) => {
     setSession(data);
@@ -36,24 +43,30 @@ function LoginPage() {
     }, 500);
   };
 
+  const validate = () => {
+    const next = {};
+    if (!email.trim()) next.email = 'auth.emailRequired';
+    else if (!EMAIL_PATTERN.test(email.trim())) next.email = 'auth.emailInvalid';
+    if (!password) next.password = 'auth.passwordRequired';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setFormError('');
-
-    if (!email || !password) {
-      setFormError(t('auth.enterCredentials'));
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      const data = await login({ email, password });
+      const data = await login({ email: email.trim(), password });
       proceedAfterAuth(data);
     } catch (error) {
-      setFormError(tServer(error.message));
+      notify.error(tServer(error));
       setLoading(false);
     }
   };
+
+  const clearError = (field) => setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
 
   if (redirecting) {
     return <PageLoader label={t('auth.settingUp')} />;
@@ -61,7 +74,7 @@ function LoginPage() {
 
   return (
     <AuthLayout title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
-      <GoogleAuthButton onError={setFormError} />
+      <GoogleAuthButton onError={(message) => notify.error(message)} />
 
       <div className="my-6 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
@@ -69,14 +82,18 @@ function LoginPage() {
         <div className="h-px flex-1 bg-border" />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <FormField
           label={t('auth.emailLabel')}
           type="email"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            clearError('email');
+          }}
           placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
+          error={fieldErrors.email && t(fieldErrors.email)}
         />
 
         <div className="relative">
@@ -84,13 +101,18 @@ function LoginPage() {
             label={t('auth.passwordLabel')}
             type={showPassword ? 'text' : 'password'}
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              clearError('password');
+            }}
             placeholder={t('auth.passwordPlaceholder')}
             autoComplete="current-password"
+            error={fieldErrors.password && t(fieldErrors.password)}
           />
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
             className="absolute right-3 top-9 text-muted hover:text-ink"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -98,14 +120,16 @@ function LoginPage() {
         </div>
 
         <div className="flex justify-end">
-          <Link to="/forgot-password" className="text-sm text-muted hover:text-ink">
+          <button
+            type="button"
+            onClick={() => notify.info(t('info.forgotPasswordSoon'))}
+            className="text-sm text-muted hover:text-ink"
+          >
             {t('auth.forgotPassword')}
-          </Link>
+          </button>
         </div>
 
-        <AlertBanner tone="error" message={formError} onDismiss={() => setFormError('')} />
-
-        <Button type="submit" loading={loading}>
+        <Button type="submit" loading={loading} loadingLabel={t('auth.signingIn')}>
           {t('auth.signIn')}
         </Button>
       </form>

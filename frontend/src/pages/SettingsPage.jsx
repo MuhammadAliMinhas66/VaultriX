@@ -5,13 +5,16 @@ import DashboardHeader from '../components/DashboardHeader.jsx';
 import FormField from '../components/FormField.jsx';
 import Button from '../components/Button.jsx';
 import Combobox from '../components/Combobox.jsx';
-import AlertBanner from '../components/AlertBanner.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { updateProfile, changePassword, uploadAvatar } from '../services/userService.js';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
-import { COUNTRIES } from '../utils/countries.js';
-import { CURRENCIES, LANGUAGES } from '../utils/options.js';
 import { useTranslation } from '../i18n/useTranslation.js';
+import { useLocalizedOptions } from '../i18n/useLocalizedOptions.js';
+import { notify } from '../i18n/notifications.js';
+import { translate, serverMessageKey } from '../i18n/translate.js';
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 
 function SettingsCard({ title, subtitle, children }) {
   return (
@@ -34,36 +37,43 @@ function ProfileSection() {
   const inputRef = useRef(null);
 
   const [name, setName] = useState(user?.name || '');
+  const [nameError, setNameError] = useState('');
   const [savingName, setSavingName] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [status, setStatus] = useState({ tone: '', message: '' });
 
   const avatarSrc = resolveAvatarUrl(user?.avatarUrl);
 
   const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    setStatus({ tone: '', message: '' });
+    if (!PHOTO_TYPES.includes(file.type)) {
+      notify.error(t('errors.uploadImageType'));
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      notify.error(t('errors.imageTooLarge'));
+      return;
+    }
+
     setUploadingPhoto(true);
     try {
       const data = await uploadAvatar(file);
       updateUser(data.user);
-      setStatus({ tone: 'success', message: t('status.photoUpdated') });
+      notify.success(t('status.photoUpdated'));
     } catch (error) {
-      setStatus({ tone: 'error', message: tServer(error.message) });
+      notify.error(tServer(error));
     } finally {
       setUploadingPhoto(false);
-      event.target.value = '';
     }
   };
 
   const handleNameSave = async (event) => {
     event.preventDefault();
-    setStatus({ tone: '', message: '' });
 
     if (!name.trim()) {
-      setStatus({ tone: 'error', message: t('status.nameEmpty') });
+      setNameError('status.nameEmpty');
       return;
     }
 
@@ -71,9 +81,9 @@ function ProfileSection() {
     try {
       const data = await updateProfile({ name });
       updateUser(data.user);
-      setStatus({ tone: 'success', message: t('status.nameUpdated') });
+      notify.success(t('status.nameUpdated'));
     } catch (error) {
-      setStatus({ tone: 'error', message: tServer(error.message) });
+      notify.error(tServer(error));
     } finally {
       setSavingName(false);
     }
@@ -93,6 +103,8 @@ function ProfileSection() {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploadingPhoto}
+          aria-label={t('settings.changePhoto')}
+          aria-busy={uploadingPhoto ? 'true' : undefined}
           className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-border bg-surface"
         >
           {uploadingPhoto ? (
@@ -111,41 +123,42 @@ function ProfileSection() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="text-sm text-muted hover:text-ink"
+            disabled={uploadingPhoto}
+            className="text-sm text-muted hover:text-ink disabled:cursor-wait"
           >
-            {t('settings.changePhoto')}
+            {uploadingPhoto ? t('common.uploading') : t('settings.changePhoto')}
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleNameSave} className="mt-6 flex flex-col gap-4">
+      <form onSubmit={handleNameSave} noValidate className="mt-6 flex flex-col gap-4">
         <FormField
           label={t('settings.fullName')}
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(event) => {
+            setName(event.target.value);
+            setNameError('');
+          }}
+          error={nameError && t(nameError)}
         />
         <div>
-          <Button type="submit" loading={savingName}>
+          <Button type="submit" loading={savingName} loadingLabel={t('common.saving')}>
             {t('settings.saveName')}
           </Button>
         </div>
       </form>
-
-      <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
-      </div>
     </SettingsCard>
   );
 }
 
 function PasswordSection() {
-  const { user } = useAuth();
+  const { user, setSession } = useAuth();
   const { t, tServer } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState({ tone: '', message: '' });
+  const [fieldErrors, setFieldErrors] = useState({});
 
   if (user?.authProvider === 'google') {
     return (
@@ -155,29 +168,36 @@ function PasswordSection() {
     );
   }
 
+  const clearError = (field) => setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+
+  const validate = () => {
+    const next = {};
+    if (!currentPassword) next.current = 'settings.currentPasswordRequired';
+    if (!newPassword) next.new = 'auth.passwordRequired';
+    else if (newPassword.length < 8) next.new = 'auth.passwordTooShort';
+    if (newPassword && confirmPassword !== newPassword) next.confirm = 'status.passwordMismatch';
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus({ tone: '', message: '' });
-
-    if (newPassword.length < 8) {
-      setStatus({ tone: 'error', message: t('errors.newPasswordTooShort') });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setStatus({ tone: 'error', message: t('status.passwordMismatch') });
-      return;
-    }
+    if (!validate()) return;
 
     setSaving(true);
     try {
-      await changePassword({ currentPassword, newPassword });
+      const data = await changePassword({ currentPassword, newPassword });
+      if (data?.accessToken) setSession(data);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setStatus({ tone: 'success', message: t('status.passwordUpdated') });
+      notify.success(t('status.passwordUpdated'));
     } catch (error) {
-      setStatus({ tone: 'error', message: tServer(error.message) });
+      if (serverMessageKey(error) === 'errors.currentPasswordWrong') {
+        setFieldErrors({ current: 'errors.currentPasswordWrong' });
+      } else {
+        notify.error(tServer(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -185,57 +205,95 @@ function PasswordSection() {
 
   return (
     <SettingsCard title={t('settings.passwordTitle')} subtitle={t('settings.passwordSubtitle')}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <FormField
           label={t('settings.currentPassword')}
           type="password"
           value={currentPassword}
-          onChange={(event) => setCurrentPassword(event.target.value)}
+          onChange={(event) => {
+            setCurrentPassword(event.target.value);
+            clearError('current');
+          }}
           autoComplete="current-password"
+          error={fieldErrors.current && t(fieldErrors.current)}
         />
         <FormField
           label={t('settings.newPassword')}
           type="password"
           value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
+          onChange={(event) => {
+            setNewPassword(event.target.value);
+            clearError('new');
+          }}
           placeholder={t('auth.signupPasswordPlaceholder')}
           autoComplete="new-password"
+          error={fieldErrors.new && t(fieldErrors.new)}
         />
         <FormField
           label={t('settings.confirmPassword')}
           type="password"
           value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
+          onChange={(event) => {
+            setConfirmPassword(event.target.value);
+            clearError('confirm');
+          }}
           autoComplete="new-password"
+          error={fieldErrors.confirm && t(fieldErrors.confirm)}
         />
         <div>
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={saving} loadingLabel={t('common.updating')}>
             {t('settings.updatePassword')}
           </Button>
         </div>
       </form>
-      <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
-      </div>
     </SettingsCard>
   );
 }
 
 function PreferencesSection() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, language, currency, setLanguage, setCurrency } = useAuth();
   const { t, tServer } = useTranslation();
+  const { countries, languages, currencies } = useLocalizedOptions();
   const [country, setCountry] = useState(user?.country || '');
-  const [language, setLanguage] = useState(user?.language || '');
-  const [currency, setCurrency] = useState(user?.currency || '');
+  const [savingField, setSavingField] = useState('');
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState({ tone: '', message: '' });
+  const [countryError, setCountryError] = useState('');
+
+  const handleLanguageChange = async (code) => {
+    if (code === language) return;
+    setLanguage(code);
+    setSavingField('language');
+    try {
+      const data = await updateProfile({ language: code });
+      updateUser(data.user);
+      notify.success(translate(code, 'status.languageUpdated'));
+    } catch (error) {
+      notify.warning(translate(code, 'warning.prefsNotSaved'));
+    } finally {
+      setSavingField('');
+    }
+  };
+
+  const handleCurrencyChange = async (code) => {
+    if (code === currency) return;
+    setCurrency(code);
+    setSavingField('currency');
+    try {
+      const data = await updateProfile({ currency: code });
+      updateUser(data.user);
+      notify.success(t('status.currencyUpdated'));
+    } catch (error) {
+      notify.warning(t('warning.prefsNotSaved'));
+    } finally {
+      setSavingField('');
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setStatus({ tone: '', message: '' });
 
-    if (!country || !language || !currency) {
-      setStatus({ tone: 'error', message: t('onboarding.selectRequired') });
+    if (!country) {
+      setCountryError('onboarding.selectRequired');
       return;
     }
 
@@ -243,9 +301,9 @@ function PreferencesSection() {
     try {
       const data = await updateProfile({ country, language, currency });
       updateUser(data.user);
-      setStatus({ tone: 'success', message: t('status.preferencesSaved') });
+      notify.success(t('status.preferencesSaved'));
     } catch (error) {
-      setStatus({ tone: 'error', message: tServer(error.message) });
+      notify.error(tServer(error));
     } finally {
       setSaving(false);
     }
@@ -253,38 +311,41 @@ function PreferencesSection() {
 
   return (
     <SettingsCard title={t('settings.preferencesTitle')} subtitle={t('settings.preferencesSubtitle')}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <Combobox
           label={t('dashboard.country')}
-          items={COUNTRIES}
+          items={countries}
           value={country}
-          onChange={setCountry}
+          onChange={(code) => {
+            setCountry(code);
+            setCountryError('');
+          }}
           placeholder={t('combobox.searchCountries')}
+          error={countryError && t(countryError)}
         />
         <Combobox
           label={t('dashboard.language')}
-          items={LANGUAGES}
+          items={languages}
           value={language}
-          onChange={setLanguage}
+          onChange={handleLanguageChange}
           placeholder={t('combobox.searchLanguages')}
+          loading={savingField === 'language'}
         />
         <Combobox
           label={t('dashboard.currency')}
-          items={CURRENCIES}
+          items={currencies}
           value={currency}
-          onChange={setCurrency}
+          onChange={handleCurrencyChange}
           placeholder={t('combobox.searchCurrencies')}
+          loading={savingField === 'currency'}
         />
 
         <div>
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={saving} loadingLabel={t('common.saving')}>
             {t('settings.savePreferences')}
           </Button>
         </div>
       </form>
-      <div className="mt-4">
-        <AlertBanner tone={status.tone} message={status.message} onDismiss={() => setStatus({ tone: '', message: '' })} />
-      </div>
     </SettingsCard>
   );
 }
@@ -292,19 +353,28 @@ function PreferencesSection() {
 function SettingsPage() {
   const { signOut } = useAuth();
   const { t } = useTranslation();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-surface">
       <DashboardHeader />
 
       <div className="mx-auto flex max-w-2xl flex-col gap-6 px-6 py-10">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold text-ink">{t('settings.title')}</h1>
           <button
-            onClick={signOut}
-            className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.03]"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            aria-busy={signingOut ? 'true' : undefined}
+            className="flex items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-ink hover:bg-black/[0.03] disabled:cursor-wait disabled:opacity-70"
           >
-            {t('settings.signOut')}
+            {signingOut && <Loader2 className="h-4 w-4 animate-spin" />}
+            {signingOut ? t('common.signingOut') : t('settings.signOut')}
           </button>
         </div>
 

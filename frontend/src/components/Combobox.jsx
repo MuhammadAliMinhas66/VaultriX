@@ -1,8 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Loader2, Search } from 'lucide-react';
 import { useTranslation } from '../i18n/useTranslation.js';
 
-function Combobox({ label, items, value, onChange, placeholder }) {
+const normalize = (text) =>
+  String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+function Combobox({
+  label,
+  ariaLabel,
+  items,
+  value,
+  onChange,
+  placeholder,
+  loading = false,
+  error,
+  className = '',
+  menuClassName = 'left-0 w-full',
+}) {
   const { t } = useTranslation();
   const resolvedPlaceholder = placeholder || t('common.search');
   const [open, setOpen] = useState(false);
@@ -12,8 +29,9 @@ function Combobox({ label, items, value, onChange, placeholder }) {
   const inputRef = useRef(null);
 
   const selected = items.find((item) => item.value === value) || null;
-  const filtered = query
-    ? items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
+  const needle = normalize(query.trim());
+  const filtered = needle
+    ? items.filter((item) => (item.search || normalize(item.label)).includes(needle))
     : items;
 
   useEffect(() => {
@@ -57,13 +75,21 @@ function Combobox({ label, items, value, onChange, placeholder }) {
   };
 
   return (
-    <div ref={rootRef} className="relative flex flex-col gap-1.5">
+    <div ref={rootRef} className={`relative flex flex-col gap-1.5 ${className}`}>
       {label && <label className="text-sm font-medium text-ink">{label}</label>}
 
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-lg border border-border px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+        onClick={() => !loading && setOpen((prev) => !prev)}
+        disabled={loading}
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-busy={loading ? 'true' : undefined}
+        aria-invalid={error ? 'true' : undefined}
+        className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:ring-2 focus:ring-accent/20 disabled:cursor-wait disabled:opacity-70 ${
+          error ? 'border-red-400 focus:border-red-500' : 'border-border focus:border-accent'
+        }`}
       >
         <span className="flex items-center gap-2 truncate">
           {selected?.flag && <span className="text-base leading-none">{selected.flag}</span>}
@@ -76,11 +102,26 @@ function Combobox({ label, items, value, onChange, placeholder }) {
             <span className="text-muted">{resolvedPlaceholder}</span>
           )}
         </span>
-        <ChevronDown className={`h-4 w-4 flex-shrink-0 text-muted transition ${open ? 'rotate-180' : ''}`} />
+        {loading ? (
+          <span className="flex flex-shrink-0 items-center gap-1.5 text-xs text-muted">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            {t('common.saving')}
+          </span>
+        ) : (
+          <ChevronDown className={`h-4 w-4 flex-shrink-0 text-muted transition ${open ? 'rotate-180' : ''}`} />
+        )}
       </button>
 
+      {error && (
+        <span role="alert" className="text-xs font-medium text-red-600">
+          {error}
+        </span>
+      )}
+
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-white shadow-xl">
+        <div
+          className={`absolute top-full z-30 mt-1.5 overflow-hidden rounded-lg border border-border bg-white shadow-xl ${menuClassName}`}
+        >
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <Search className="h-3.5 w-3.5 flex-shrink-0 text-muted" />
             <input
@@ -93,7 +134,7 @@ function Combobox({ label, items, value, onChange, placeholder }) {
             />
           </div>
 
-          <div className="max-h-56 overflow-y-auto py-1">
+          <div role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 && (
               <p className="px-3.5 py-2.5 text-sm text-muted">{t('common.noMatches')}</p>
             )}
@@ -101,6 +142,8 @@ function Combobox({ label, items, value, onChange, placeholder }) {
               <button
                 key={item.value}
                 type="button"
+                role="option"
+                aria-selected={item.value === value}
                 onClick={() => selectItem(item)}
                 onMouseEnter={() => setHighlighted(index)}
                 className={`flex w-full items-center gap-2 px-3.5 py-2 text-left text-sm ${

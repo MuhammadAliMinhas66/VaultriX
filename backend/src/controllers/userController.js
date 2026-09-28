@@ -87,7 +87,7 @@ export const changePassword = async (req, res, next) => {
 
     const matches = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!matches) {
-      return res.status(401).json({ success: false, message: 'Your current password is not right.' });
+      return res.status(400).json({ success: false, message: 'Your current password is not right.' });
     }
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);

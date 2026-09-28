@@ -7,6 +7,8 @@ function PageLoader({ title, label }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25 }}
+      role="status"
+      aria-live="polite"
       className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center"
     >
       {title && (

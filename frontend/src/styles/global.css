@@ -20,3 +20,12 @@ textarea,
 li {
   unicode-bidi: plaintext;
 }
+
+@keyframes toast-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
 import Logo from './Logo.jsx';
+import { useTranslation } from '../i18n/useTranslation.js';
 
 function DashboardHeader() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const avatarSrc = resolveAvatarUrl(user?.avatarUrl);
 
   return (
@@ -13,6 +15,7 @@ function DashboardHeader() {
 
       <Link
         to="/settings"
+        aria-label={t('settings.title')}
         className="flex items-center gap-2 rounded-full border border-border py-1.5 pl-1.5 pr-3 transition hover:bg-surface"
       >
         {avatarSrc ? (

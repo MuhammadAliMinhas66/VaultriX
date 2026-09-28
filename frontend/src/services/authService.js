@@ -1,14 +1,12 @@
 import api from './api.js';
-
-const extractMessage = (error, fallback) =>
-  error.response?.data?.message || fallback;
+import { toApiError } from './apiError.js';
 
 export const signup = async (payload) => {
   try {
     const { data } = await api.post('/auth/signup', payload);
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not create your account right now. Please try again.'));
+    throw toApiError(error);
   }
 };
 
@@ -17,7 +15,7 @@ export const login = async (payload) => {
     const { data } = await api.post('/auth/login', payload);
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not sign you in right now. Please try again.'));
+    throw toApiError(error);
   }
 };
 
@@ -48,6 +46,6 @@ export const googleAuth = async (idToken) => {
     const { data } = await api.post('/auth/google', { idToken });
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not sign you in with Google right now.'));
+    throw toApiError(error, 'auth.googleFailed');
   }
 };

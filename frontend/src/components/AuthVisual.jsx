@@ -1,32 +1,54 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Home, Wallet, Users, Receipt } from 'lucide-react';
+import { useTranslation } from '../i18n/useTranslation.js';
+import { useFormat } from '../i18n/useFormat.js';
 
 const bars = [10, 18, 13, 24, 16, 28];
 
+function useDemo() {
+  const { t } = useTranslation();
+  const f = useFormat();
+  return {
+    t,
+    f,
+    num: (value) => f.formatNumber(value),
+    money: (value, options) => f.formatMoney(value, options),
+    day: (monthIndex, dayOfMonth) => f.formatDate(new Date(2026, monthIndex, dayOfMonth)),
+    month: (monthIndex) => f.formatMonth(new Date(2026, monthIndex, 1)),
+  };
+}
+
 function OverviewCard() {
+  const { t, f, num, money } = useDemo();
+
   return (
     <div className="flex h-full flex-col">
-      <CardHeader icon={Home} label="Overview" />
+      <CardHeader icon={Home} label={t('v.overview')} />
       <div className="mt-2.5 rounded-lg bg-white p-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[7px] uppercase tracking-wide text-black/45">Total balance</span>
+        <div className="flex items-center justify-between gap-1">
+          <span className="text-[7px] uppercase tracking-wide text-black/45">{t('v.totalBalance')}</span>
           <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[7px] font-medium text-emerald-600">
-            +4.2%
+            {f.formatNumber(0.042, {
+              style: 'percent',
+              signDisplay: 'always',
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })}
           </span>
         </div>
-        <p className="mt-1 text-[13px] font-semibold text-ink">148,240.00</p>
+        <p className="mt-1 whitespace-nowrap text-[13px] font-semibold text-ink">{money(148240, { decimals: 2 })}</p>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1.5">
         <div className="rounded-md border border-white/10 bg-white/[0.06] p-1.5">
           <Wallet className="h-2.5 w-2.5 text-white/50" />
-          <p className="mt-1 text-[7px] text-white/45">Loans</p>
-          <p className="text-[9px] font-medium text-white/85">12,000</p>
+          <p className="mt-1 text-[7px] text-white/45">{t('v.loans')}</p>
+          <p className="whitespace-nowrap text-[9px] font-medium text-white/85">{money(12000)}</p>
         </div>
         <div className="rounded-md border border-white/10 bg-white/[0.06] p-1.5">
           <Users className="h-2.5 w-2.5 text-white/50" />
-          <p className="mt-1 text-[7px] text-white/45">Committees</p>
-          <p className="text-[9px] font-medium text-white/85">3 active</p>
+          <p className="mt-1 text-[7px] text-white/45">{t('v.committees')}</p>
+          <p className="text-[9px] font-medium text-white/85">{t('v.active', { count: num(3) })}</p>
         </div>
       </div>
       <div className="mt-2 flex h-10 flex-1 items-end gap-1 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-1.5">
@@ -45,22 +67,23 @@ function OverviewCard() {
 }
 
 function LoansCard() {
+  const { t, money } = useDemo();
   const rows = [
-    { name: 'Ahmed Raza', note: 'You lent', amount: '8,000', positive: true },
-    { name: 'Sara Khan', note: 'You owe', amount: '4,200', positive: false },
+    { name: 'Ahmed Raza', note: t('v.youLent'), amount: money(8000), positive: true },
+    { name: 'Sara Khan', note: t('v.youOwe'), amount: money(4200), positive: false },
   ];
 
   return (
     <div className="flex h-full flex-col">
-      <CardHeader icon={Wallet} label="Loans" />
+      <CardHeader icon={Wallet} label={t('v.loans')} />
       <div className="mt-2.5 flex flex-col gap-1.5">
         {rows.map((row) => (
           <div
             key={row.name}
-            className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5"
+            className="flex items-center justify-between gap-1 rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5"
           >
             <div className="flex items-center gap-1.5">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[7px] font-medium text-white/70">
+              <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-[7px] font-medium text-white/70">
                 {row.name.charAt(0)}
               </div>
               <div>
@@ -69,7 +92,7 @@ function LoansCard() {
               </div>
             </div>
             <span
-              className={`text-[9px] font-medium ${row.positive ? 'text-emerald-400' : 'text-amber-400'}`}
+              className={`whitespace-nowrap text-[9px] font-medium ${row.positive ? 'text-emerald-400' : 'text-amber-400'}`}
             >
               {row.amount}
             </span>
@@ -77,25 +100,26 @@ function LoansCard() {
         ))}
       </div>
       <div className="mt-2.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-[7px] text-white/45">
-        Repayment schedule stays up to date automatically.
+        {t('v.repayNote')}
       </div>
     </div>
   );
 }
 
 function CommitteesCard() {
+  const { t, num } = useDemo();
   const rows = [
-    { name: 'Family committee', progress: 60, note: '6 of 10 rounds' },
-    { name: 'Office committee', progress: 30, note: '3 of 10 rounds' },
+    { name: t('v.familyCommittee'), progress: 60, note: t('v.roundsOf', { done: num(6), total: num(10) }) },
+    { name: t('v.officeCommittee'), progress: 30, note: t('v.roundsOf', { done: num(3), total: num(10) }) },
   ];
 
   return (
     <div className="flex h-full flex-col">
-      <CardHeader icon={Users} label="Committees" />
+      <CardHeader icon={Users} label={t('v.committees')} />
       <div className="mt-2.5 flex flex-col gap-2">
         {rows.map((row) => (
           <div key={row.name} className="rounded-md border border-white/10 bg-white/[0.05] p-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <p className="text-[8.5px] font-medium text-white/85">{row.name}</p>
               <p className="text-[7px] text-white/40">{row.note}</p>
             </div>
@@ -115,28 +139,29 @@ function CommitteesCard() {
 }
 
 function BillsCard() {
+  const { t, num, money } = useDemo();
   const rows = [
-    { name: 'Electricity bill', note: 'Split 3 ways', amount: '6,000' },
-    { name: 'Internet', note: 'Split 3 ways', amount: '3,000' },
+    { name: t('v.electricityBill'), note: t('v.splitWays', { count: num(3) }), amount: money(6000) },
+    { name: t('v.internet'), note: t('v.splitWays', { count: num(3) }), amount: money(3000) },
   ];
 
   return (
     <div className="flex h-full flex-col">
-      <CardHeader icon={Receipt} label="This month" />
-      <div className="mt-2.5 rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5 text-[8px] text-white/70">
-        You owe <span className="font-medium text-white/90">Bilal Rs 2,400</span>
+      <CardHeader icon={Receipt} label={t('v.thisMonth')} />
+      <div className="mt-2.5 rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5 text-[8px] font-medium text-white/85">
+        {t('v.oweTo', { name: 'Bilal', amount: money(2400) })}
       </div>
       <div className="mt-2 flex flex-col gap-1.5">
         {rows.map((row) => (
           <div
             key={row.name}
-            className="flex items-center justify-between rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5"
+            className="flex items-center justify-between gap-1 rounded-md border border-white/10 bg-white/[0.05] px-2 py-1.5"
           >
             <div>
               <p className="text-[8.5px] font-medium text-white/85">{row.name}</p>
               <p className="text-[7px] text-white/40">{row.note}</p>
             </div>
-            <span className="text-[9px] font-medium text-white/80">{row.amount}</span>
+            <span className="whitespace-nowrap text-[9px] font-medium text-white/80">{row.amount}</span>
           </div>
         ))}
       </div>
@@ -164,11 +189,12 @@ const screens = [
 
 function PhoneScreen({ index }) {
   const ActiveCard = screens[index].Component;
+  const { f } = useDemo();
 
   return (
     <div className="flex h-full w-full flex-col bg-gradient-to-b from-[#101015] to-[#0a0a0d] p-3">
       <div className="flex items-center justify-between px-0.5">
-        <span className="text-[10px] font-medium text-white/50">9:41</span>
+        <span className="text-[10px] font-medium text-white/50">{f.formatTime(new Date(2026, 8, 28, 9, 41))}</span>
         <div className="flex items-center gap-0.5">
           <span className="h-1.5 w-0.5 rounded-full bg-white/40" />
           <span className="h-2 w-0.5 rounded-full bg-white/40" />
@@ -210,12 +236,7 @@ function PhoneScreen({ index }) {
   );
 }
 
-const callouts = [
-  'Real-time balance across accounts',
-  'See exactly who owes whom',
-  'Follow every committee round',
-  'Split any bill in seconds',
-];
+const callouts = ['v.callout1', 'v.callout2', 'v.callout3', 'v.callout4'];
 
 const SCREEN_DURATION = 2800;
 const OPEN_MS = 7200;
@@ -245,28 +266,38 @@ const TOOLTIP_TOP = 74;
 function PageShell({ title, meta, children }) {
   return (
     <div className="flex h-full w-full flex-col overflow-hidden rounded-xl bg-gradient-to-br from-white to-[#e8e8ec] p-3.5 text-ink shadow-[0_22px_46px_-14px_rgba(0,0,0,0.75)]">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] font-semibold text-ink/70">{title}</span>
-        {meta && <span className="text-[10px] text-ink/45">{meta}</span>}
+        {meta && <span className="whitespace-nowrap text-[10px] text-ink/45">{meta}</span>}
       </div>
       {children}
     </div>
   );
 }
 
+function Line({ label, value, valueClass = 'font-medium', size = 'text-[11px]', className = 'mt-1.5' }) {
+  return (
+    <div className={`${className} flex items-center justify-between gap-2 ${size}`}>
+      <span className="text-ink/50">{label}</span>
+      <span className={`whitespace-nowrap tabular-nums ${valueClass}`}>{value}</span>
+    </div>
+  );
+}
+
 function LoansPage() {
+  const { t, num, money } = useDemo();
   const rows = [
-    { name: 'Ahmed Raza', note: 'You lent', amount: '8,000', tone: 'text-emerald-700' },
-    { name: 'Sara Khan', note: 'You owe', amount: '4,200', tone: 'text-amber-700' },
+    { name: 'Ahmed Raza', note: t('v.youLent'), amount: money(8000), tone: 'text-emerald-700' },
+    { name: 'Sara Khan', note: t('v.youOwe'), amount: money(4200), tone: 'text-amber-700' },
   ];
 
   return (
-    <PageShell title="Loans" meta="2 open">
+    <PageShell title={t('v.loans')} meta={t('v.openCount', { count: num(2) })}>
       <div className="mt-3 flex flex-col gap-2.5">
         {rows.map((row) => (
-          <div key={row.name} className="flex items-center justify-between">
+          <div key={row.name} className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[10px] font-medium text-white">
+              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-medium text-white">
                 {row.name.charAt(0)}
               </span>
               <div>
@@ -274,132 +305,120 @@ function LoansPage() {
                 <p className="text-[10px] text-ink/45">{row.note}</p>
               </div>
             </div>
-            <span className={`text-[12.5px] font-semibold tabular-nums ${row.tone}`}>{row.amount}</span>
+            <span className={`whitespace-nowrap text-[12.5px] font-semibold tabular-nums ${row.tone}`}>{row.amount}</span>
           </div>
         ))}
       </div>
-      <div className="mt-2.5 flex items-center justify-between border-t border-ink/10 pt-2 text-[11px]">
-        <span className="text-ink/50">Net position</span>
-        <span className="font-semibold tabular-nums">+3,800</span>
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-ink/10 pt-2 text-[11px]">
+        <span className="text-ink/50">{t('v.netPosition')}</span>
+        <span className="whitespace-nowrap font-semibold tabular-nums">{money(3800, { signed: true })}</span>
       </div>
     </PageShell>
   );
 }
 
 function CommitteePage() {
+  const { t, num, money, day } = useDemo();
+
   return (
-    <PageShell title="Committee" meta="Round 6 of 10">
-      <p className="mt-3 text-[14px] font-semibold leading-tight">Family committee</p>
+    <PageShell title={t('v.committee')} meta={t('v.roundOf', { round: num(6), total: num(10) })}>
+      <p className="mt-3 text-[14px] font-semibold leading-tight">{t('v.familyCommittee')}</p>
       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
         <div className="h-full w-[60%] rounded-full bg-ink" />
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Paid so far</span>
-        <span className="font-semibold tabular-nums">60,000</span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Next payout</span>
-        <span className="font-medium">12 Nov, Hina</span>
-      </div>
+      <Line className="mt-3" label={t('v.paidSoFar')} value={money(60000)} valueClass="font-semibold" />
+      <Line label={t('v.nextPayout')} value={`${day(10, 12)}, Hina`} valueClass="font-medium" />
     </PageShell>
   );
 }
 
 function RentPage() {
+  const { t, num, money } = useDemo();
+
   return (
-    <PageShell title="Rent, split 3 ways">
-      <p className="mt-2.5 text-[10.5px] text-ink/50">Your share</p>
-      <p className="text-[23px] font-semibold leading-tight tabular-nums">15,000</p>
-      <div className="mt-2.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Base rent</span>
-        <span className="font-medium tabular-nums">12,000</span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Utilities</span>
-        <span className="font-medium tabular-nums">3,000</span>
-      </div>
+    <PageShell title={t('v.rentSplit', { count: num(3) })}>
+      <p className="mt-2.5 text-[10.5px] text-ink/50">{t('v.yourShare')}</p>
+      <p className="whitespace-nowrap text-[23px] font-semibold leading-tight tabular-nums">{money(15000)}</p>
+      <Line className="mt-2.5" label={t('v.baseRent')} value={money(12000)} />
+      <Line label={t('v.utilities')} value={money(3000)} />
     </PageShell>
   );
 }
 
 function SalaryPage() {
+  const { t, money, month } = useDemo();
+
   return (
-    <PageShell title="Salary, September">
-      <div className="mt-3 flex items-center justify-between text-[11.5px]">
-        <span className="text-ink/50">Gross</span>
-        <span className="font-medium tabular-nums">150,000</span>
+    <PageShell title={t('v.salaryMonth', { month: month(8) })}>
+      <Line className="mt-3" size="text-[11.5px]" label={t('v.gross')} value={money(150000)} />
+      <Line size="text-[11.5px]" label={t('v.tax')} value={money(-12500)} valueClass="font-medium text-amber-700" />
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-ink/10 pt-2 text-[13px]">
+        <span className="font-medium">{t('v.net')}</span>
+        <span className="whitespace-nowrap font-semibold tabular-nums">{money(137500)}</span>
       </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11.5px]">
-        <span className="text-ink/50">Tax</span>
-        <span className="font-medium tabular-nums text-amber-700">-12,500</span>
-      </div>
-      <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-2 text-[13px]">
-        <span className="font-medium">Net</span>
-        <span className="font-semibold tabular-nums">137,500</span>
-      </div>
-      <p className="mt-2 whitespace-nowrap text-[10.5px] text-ink/45">Fixed expenses 62,000</p>
+      <p className="mt-2 whitespace-nowrap text-[10.5px] text-ink/45">{t('v.fixedExpenses', { amount: money(62000) })}</p>
     </PageShell>
   );
 }
 
 function BillsPage() {
+  const { t, num, money, day } = useDemo();
   const rows = [
-    { name: 'Electricity', note: 'Due 8 Oct', amount: '6,000' },
-    { name: 'Internet', note: 'Bilal paid for you', amount: '1,000' },
+    { name: t('v.electricity'), note: t('v.dueDate', { date: day(9, 8) }), amount: money(6000) },
+    { name: t('v.internet'), note: t('v.paidForYou', { name: 'Bilal' }), amount: money(1000) },
   ];
 
   return (
-    <PageShell title="Bills" meta="2 pending">
+    <PageShell title={t('v.bills')} meta={t('v.pendingCount', { count: num(2) })}>
       <div className="mt-3 flex flex-col gap-2.5">
         {rows.map((row) => (
-          <div key={row.name} className="flex items-center justify-between">
+          <div key={row.name} className="flex items-center justify-between gap-2">
             <div>
               <p className="text-[11.5px] font-medium leading-tight">{row.name}</p>
-              <p className="whitespace-nowrap text-[10px] text-ink/45">{row.note}</p>
+              <p className="text-[10px] text-ink/45">{row.note}</p>
             </div>
-            <span className="text-[12.5px] font-semibold tabular-nums">{row.amount}</span>
+            <span className="whitespace-nowrap text-[12.5px] font-semibold tabular-nums">{row.amount}</span>
           </div>
         ))}
       </div>
-      <div className="mt-2.5 flex items-center justify-between border-t border-ink/10 pt-2 text-[11px]">
-        <span className="text-ink/50">Total due</span>
-        <span className="font-semibold tabular-nums">7,000</span>
+      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-ink/10 pt-2 text-[11px]">
+        <span className="text-ink/50">{t('v.totalDue')}</span>
+        <span className="whitespace-nowrap font-semibold tabular-nums">{money(7000)}</span>
       </div>
     </PageShell>
   );
 }
 
 function SplitPage() {
+  const { t, money } = useDemo();
+
   return (
-    <PageShell title="Group split" meta="Murree trip">
-      <p className="mt-2.5 text-[10.5px] text-ink/50">Others owe you</p>
-      <p className="text-[23px] font-semibold leading-tight tabular-nums text-emerald-700">8,000</p>
-      <div className="mt-2.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">You paid</span>
-        <span className="font-medium tabular-nums">12,000</span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Your share</span>
-        <span className="font-medium tabular-nums">4,000</span>
-      </div>
+    <PageShell title={t('v.groupSplit')} meta={t('v.tripName')}>
+      <p className="mt-2.5 text-[10.5px] text-ink/50">{t('v.othersOweYou')}</p>
+      <p className="whitespace-nowrap text-[23px] font-semibold leading-tight tabular-nums text-emerald-700">
+        {money(8000)}
+      </p>
+      <Line className="mt-2.5" label={t('v.youPaid')} value={money(12000)} />
+      <Line label={t('v.yourShare')} value={money(4000)} />
     </PageShell>
   );
 }
 
 function BudgetPage() {
+  const { t, money, month } = useDemo();
   const rows = [
-    { name: 'Groceries', text: '18,400 of 25,000', pct: 74 },
-    { name: 'Transport', text: '7,200 of 12,000', pct: 60 },
+    { name: t('v.groceries'), text: t('v.spentOf', { spent: money(18400), limit: money(25000) }), pct: 74 },
+    { name: t('v.transport'), text: t('v.spentOf', { spent: money(7200), limit: money(12000) }), pct: 60 },
   ];
 
   return (
-    <PageShell title="Budget" meta="October">
+    <PageShell title={t('v.budget')} meta={month(9)}>
       <div className="mt-3 flex flex-col gap-3">
         {rows.map((row) => (
           <div key={row.name}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <span className="text-[11.5px] font-medium">{row.name}</span>
-              <span className="text-[10px] tabular-nums text-ink/50">{row.text}</span>
+              <span className="whitespace-nowrap text-[10px] tabular-nums text-ink/50">{row.text}</span>
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
               <div className="h-full rounded-full bg-ink" style={{ width: `${row.pct}%` }} />
@@ -412,64 +431,59 @@ function BudgetPage() {
 }
 
 function GoalPage() {
+  const { t, f, money } = useDemo();
+
   return (
-    <PageShell title="Savings goal" meta="52%">
-      <p className="mt-3 text-[14px] font-semibold leading-tight">Emergency fund</p>
+    <PageShell title={t('v.savingsGoal')} meta={f.formatPercent(0.52)}>
+      <p className="mt-3 text-[14px] font-semibold leading-tight">{t('v.emergencyFund')}</p>
       <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/10">
         <div className="h-full w-[52%] rounded-full bg-ink" />
       </div>
-      <div className="mt-3 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Saved</span>
-        <span className="font-semibold tabular-nums">104,000</span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Target</span>
-        <span className="font-medium tabular-nums">200,000</span>
-      </div>
+      <Line className="mt-3" label={t('v.saved')} value={money(104000)} valueClass="font-semibold" />
+      <Line label={t('v.target')} value={money(200000)} />
     </PageShell>
   );
 }
 
 function AccountsPage() {
+  const { t, num, money } = useDemo();
   const rows = [
-    { name: 'Cash', amount: '18,240' },
-    { name: 'Bank', amount: '112,000' },
-    { name: 'Wallet', amount: '18,000' },
+    { name: t('v.cash'), amount: money(18240) },
+    { name: t('v.bank'), amount: money(112000) },
+    { name: t('v.wallet'), amount: money(18000) },
   ];
 
   return (
-    <PageShell title="Accounts" meta="3 accounts">
+    <PageShell title={t('v.accounts')} meta={t('v.accountsCount', { count: num(3) })}>
       <div className="mt-3 flex flex-col gap-1.5">
         {rows.map((row) => (
-          <div key={row.name} className="flex items-center justify-between text-[11.5px]">
-            <span className="text-ink/50">{row.name}</span>
-            <span className="font-medium tabular-nums">{row.amount}</span>
-          </div>
+          <Line key={row.name} className="" size="text-[11.5px]" label={row.name} value={row.amount} />
         ))}
       </div>
-      <div className="mt-2 flex items-center justify-between border-t border-ink/10 pt-2 text-[13px]">
-        <span className="font-medium">Total</span>
-        <span className="font-semibold tabular-nums">148,240</span>
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-ink/10 pt-2 text-[13px]">
+        <span className="font-medium">{t('v.total')}</span>
+        <span className="whitespace-nowrap font-semibold tabular-nums">{money(148240)}</span>
       </div>
     </PageShell>
   );
 }
 
 function RecurringPage() {
+  const { t, money, day } = useDemo();
   const rows = [
-    { name: 'Rent', date: '1 Oct', amount: '15,000' },
-    { name: 'Gym', date: '3 Oct', amount: '3,500' },
-    { name: 'Phone plan', date: '5 Oct', amount: '1,200' },
+    { name: t('v.rent'), date: day(9, 1), amount: money(15000) },
+    { name: t('v.gym'), date: day(9, 3), amount: money(3500) },
+    { name: t('v.phonePlan'), date: day(9, 5), amount: money(1200) },
   ];
 
   return (
-    <PageShell title="Recurring" meta="Next 7 days">
+    <PageShell title={t('v.recurring')} meta={t('v.next7Days')}>
       <div className="mt-3 flex flex-col gap-2.5">
         {rows.map((row) => (
           <div key={row.name} className="flex items-center gap-2 text-[11.5px]">
             <span className="flex-1 whitespace-nowrap font-medium">{row.name}</span>
             <span className="whitespace-nowrap text-[10px] text-ink/45">{row.date}</span>
-            <span className="w-12 text-right font-semibold tabular-nums">{row.amount}</span>
+            <span className="min-w-[3rem] whitespace-nowrap text-right font-semibold tabular-nums">{row.amount}</span>
           </div>
         ))}
       </div>
@@ -478,34 +492,35 @@ function RecurringPage() {
 }
 
 function TenantRentPage() {
+  const { t, money, day } = useDemo();
+
   return (
-    <PageShell title="Rent, tenant">
-      <p className="mt-2.5 text-[10.5px] text-ink/50">You owe the landlord</p>
-      <p className="text-[23px] font-semibold leading-tight tabular-nums text-amber-700">15,000</p>
-      <div className="mt-2.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Due on</span>
-        <span className="font-medium">1 Oct</span>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between text-[11px]">
-        <span className="text-ink/50">Last paid</span>
-        <span className="font-medium">1 Sep</span>
-      </div>
+    <PageShell title={t('v.rentTenant')}>
+      <p className="mt-2.5 text-[10.5px] text-ink/50">{t('v.oweLandlord')}</p>
+      <p className="whitespace-nowrap text-[23px] font-semibold leading-tight tabular-nums text-amber-700">
+        {money(15000)}
+      </p>
+      <Line className="mt-2.5" label={t('v.dueOn')} value={day(9, 1)} valueClass="font-medium" />
+      <Line label={t('v.lastPaid')} value={day(8, 1)} valueClass="font-medium" />
     </PageShell>
   );
 }
 
 function SpendingPage() {
+  const { t, f, money, month } = useDemo();
   const bars = [10, 16, 13, 22, 15, 20];
 
   return (
-    <PageShell title="Spending" meta="This month">
-      <p className="mt-2.5 text-[23px] font-semibold leading-tight tabular-nums">84,300</p>
+    <PageShell title={t('v.spending')} meta={t('v.thisMonth')}>
+      <p className="mt-2.5 whitespace-nowrap text-[23px] font-semibold leading-tight tabular-nums">{money(84300)}</p>
       <div className="mt-2 flex h-7 items-end gap-1.5">
         {bars.map((height, i) => (
           <div key={i} className="w-full rounded-sm bg-ink/70" style={{ height }} />
         ))}
       </div>
-      <p className="mt-2 text-[10.5px] text-emerald-700">Down 6% from August</p>
+      <p className="mt-2 text-[10.5px] text-emerald-700">
+        {t('v.downFrom', { percent: f.formatPercent(0.06), month: month(7) })}
+      </p>
     </PageShell>
   );
 }
@@ -593,6 +608,8 @@ function FlyingPage({ slot, Page, order, open, reduce, variants }) {
 }
 
 function Callout({ index }) {
+  const { t } = useTranslation();
+
   return (
     <>
       <span
@@ -614,7 +631,7 @@ function Callout({ index }) {
           >
             <span className="h-px w-7 bg-white/35" />
             <p className="w-[148px] rounded-lg border border-white/15 bg-white/[0.07] px-3 py-2 text-[12px] leading-snug text-white">
-              {callouts[index]}
+              {t(callouts[index])}
             </p>
           </motion.div>
         </AnimatePresence>

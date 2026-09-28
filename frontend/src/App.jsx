@@ -7,10 +7,11 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import PublicOnlyRoute from './components/PublicOnlyRoute.jsx';
 import RequireOnboarding from './components/RequireOnboarding.jsx';
 import DashboardHeader from './components/DashboardHeader.jsx';
+import ToastViewport from './components/ToastViewport.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { useTranslation } from './i18n/useTranslation.js';
-import { COUNTRIES } from './utils/countries.js';
-import { CURRENCIES, LANGUAGES, formatCurrency } from './utils/options.js';
+import { useFormat } from './i18n/useFormat.js';
+import { useLocalizedOptions } from './i18n/useLocalizedOptions.js';
 
 function PreferenceChip({ label, value }) {
   return (
@@ -22,12 +23,15 @@ function PreferenceChip({ label, value }) {
 }
 
 function DashboardPlaceholder() {
-  const { user } = useAuth();
-  const { t, language } = useTranslation();
+  const { user, language, currency } = useAuth();
+  const { t } = useTranslation();
+  const { formatMoney } = useFormat();
+  const { countries, languages, currencies } = useLocalizedOptions();
 
-  const country = COUNTRIES.find((item) => item.value === user?.country);
-  const languageOption = LANGUAGES.find((item) => item.value === user?.language);
-  const currencyOption = CURRENCIES.find((item) => item.value === user?.currency);
+  const country = countries.find((item) => item.value === user?.country);
+  const languageOption = languages.find((item) => item.value === language);
+  const currencyOption = currencies.find((item) => item.value === currency);
+  const notSet = t('dashboard.notSet');
 
   return (
     <div className="min-h-screen bg-surface">
@@ -41,16 +45,18 @@ function DashboardPlaceholder() {
         </div>
 
         {user && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <PreferenceChip
               label={t('dashboard.country')}
-              value={country ? `${country.flag} ${country.label}` : '-'}
+              value={country ? `${country.flag} ${country.label}` : notSet}
             />
-            <PreferenceChip label={t('dashboard.language')} value={languageOption?.label || '-'} />
+            <PreferenceChip label={t('dashboard.language')} value={languageOption?.label || notSet} />
             <PreferenceChip
               label={t('dashboard.currency')}
               value={
-                currencyOption ? `${currencyOption.value} ${formatCurrency(0, currencyOption.value, language)}` : '-'
+                currencyOption
+                  ? `${currencyOption.label} (${formatMoney(0, { decimals: 2 })})`
+                  : notSet
               }
             />
           </div>
@@ -62,25 +68,28 @@ function DashboardPlaceholder() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+    <>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-      <Route element={<PublicOnlyRoute />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-      </Route>
-
-      <Route element={<ProtectedRoute />}>
-        <Route path="/onboarding" element={<OnboardingPage />} />
-
-        <Route element={<RequireOnboarding />}>
-          <Route path="/dashboard" element={<DashboardPlaceholder />} />
-          <Route path="/settings" element={<SettingsPage />} />
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+
+          <Route element={<RequireOnboarding />}>
+            <Route path="/dashboard" element={<DashboardPlaceholder />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+      <ToastViewport />
+    </>
   );
 }
 

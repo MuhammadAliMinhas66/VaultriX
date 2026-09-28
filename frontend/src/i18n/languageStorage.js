@@ -1,17 +1,23 @@
-const STORAGE_KEY = 'vaultrix_language';
+const LANGUAGE_KEY = 'vaultrix_language';
+const CURRENCY_KEY = 'vaultrix_currency';
 
-export const getStoredLanguage = () => {
+const read = (key) => {
   try {
-    return localStorage.getItem(STORAGE_KEY) || '';
+    return localStorage.getItem(key) || '';
   } catch (error) {
     return '';
   }
 };
 
-export const setStoredLanguage = (language) => {
+const write = (key, value) => {
   try {
-    if (language) localStorage.setItem(STORAGE_KEY, language);
+    if (value) localStorage.setItem(key, value);
   } catch (error) {
     // storage can be unavailable in private browsing, the UI still works without it
   }
 };
+
+export const getStoredLanguage = () => read(LANGUAGE_KEY);
+export const setStoredLanguage = (language) => write(LANGUAGE_KEY, language);
+export const getStoredCurrency = () => read(CURRENCY_KEY);
+export const setStoredCurrency = (currency) => write(CURRENCY_KEY, currency);

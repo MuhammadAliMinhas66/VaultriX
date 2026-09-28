@@ -18,7 +18,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts. Please wait a moment and try again.' },
+});
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);

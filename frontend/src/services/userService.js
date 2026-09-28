@@ -1,13 +1,12 @@
 import api from './api.js';
-
-const extractMessage = (error, fallback) => error.response?.data?.message || fallback;
+import { toApiError } from './apiError.js';
 
 export const updateProfile = async (payload) => {
   try {
     const { data } = await api.patch('/users/me', payload);
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not save your changes right now. Please try again.'));
+    throw toApiError(error);
   }
 };
 
@@ -16,7 +15,7 @@ export const changePassword = async (payload) => {
     const { data } = await api.post('/users/me/password', payload);
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not update your password right now. Please try again.'));
+    throw toApiError(error);
   }
 };
 
@@ -26,9 +25,10 @@ export const uploadAvatar = async (file) => {
     form.append('avatar', file);
     const { data } = await api.post('/users/me/avatar', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
     });
     return data;
   } catch (error) {
-    throw new Error(extractMessage(error, 'Could not upload that image right now. Please try again.'));
+    throw toApiError(error);
   }
 };

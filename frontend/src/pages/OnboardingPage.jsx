@@ -4,17 +4,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import Combobox from '../components/Combobox.jsx';
-import AlertBanner from '../components/AlertBanner.jsx';
 import Logo from '../components/Logo.jsx';
 import PageLoader from '../components/PageLoader.jsx';
 import { CountryIcon, LanguageIcon, CurrencyIcon } from '../components/icons/StepIcons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { updateProfile, uploadAvatar } from '../services/userService.js';
 import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
-import { COUNTRIES } from '../utils/countries.js';
-import { CURRENCIES } from '../utils/options.js';
-import { LANGUAGES } from '../utils/options.js';
 import { useTranslation } from '../i18n/useTranslation.js';
+import { useLocalizedOptions } from '../i18n/useLocalizedOptions.js';
+import { notify } from '../i18n/notifications.js';
+
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 
 function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect, prompt }) {
   const inputRef = useRef(null);
@@ -56,8 +57,9 @@ const steps = ['country', 'language', 'currency', 'photo'];
 
 function OnboardingPage() {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, setLanguage: setAppLanguage } = useAuth();
   const { t, tServer } = useTranslation();
+  const { countries, languages, currencies } = useLocalizedOptions();
 
   const [stepIndex, setStepIndex] = useState(0);
   const [country, setCountry] = useState('');
@@ -66,7 +68,6 @@ function OnboardingPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
   const [welcoming, setWelcoming] = useState(false);
 
   const activeSteps = user?.avatarUrl ? steps.slice(0, 3) : steps;
@@ -90,8 +91,22 @@ function OnboardingPage() {
   }
 
   const handlePhotoSelect = (file) => {
+    if (!PHOTO_TYPES.includes(file.type)) {
+      notify.error(t('errors.uploadImageType'));
+      return;
+    }
+    if (file.size > PHOTO_MAX_BYTES) {
+      notify.error(t('errors.imageTooLarge'));
+      return;
+    }
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPhotoFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleLanguageChange = (code) => {
+    setLanguage(code);
+    setAppLanguage(code);
   };
 
   const finish = async () => {
@@ -109,10 +124,8 @@ function OnboardingPage() {
   };
 
   const handleContinue = async () => {
-    setError('');
-
     if (!canContinue) {
-      setError(t('onboarding.selectRequired'));
+      notify.warning(t('onboarding.selectRequired'));
       return;
     }
 
@@ -136,25 +149,23 @@ function OnboardingPage() {
 
       setStepIndex((prev) => prev + 1);
     } catch (err) {
-      setError(tServer(err.message));
+      notify.error(tServer(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSkipPhoto = async () => {
-    setError('');
     setSubmitting(true);
     try {
       await finish();
     } catch (err) {
-      setError(tServer(err.message));
+      notify.error(tServer(err));
       setSubmitting(false);
     }
   };
 
   const handleBack = () => {
-    setError('');
     setStepIndex((prev) => Math.max(0, prev - 1));
   };
 
@@ -188,7 +199,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.countryTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.countrySubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={COUNTRIES} value={country} onChange={setCountry} placeholder={t('combobox.searchCountries')} />
+                  <Combobox items={countries} value={country} onChange={setCountry} placeholder={t('combobox.searchCountries')} />
                 </div>
               </div>
             )}
@@ -199,7 +210,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.languageTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.languageSubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={LANGUAGES} value={language} onChange={setLanguage} placeholder={t('combobox.searchLanguages')} />
+                  <Combobox items={languages} value={language} onChange={handleLanguageChange} placeholder={t('combobox.searchLanguages')} />
                 </div>
               </div>
             )}
@@ -210,7 +221,7 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.currencyTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.currencySubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={CURRENCIES} value={currency} onChange={setCurrency} placeholder={t('combobox.searchCurrencies')} />
+                  <Combobox items={currencies} value={currency} onChange={setCurrency} placeholder={t('combobox.searchCurrencies')} />
                 </div>
               </div>
             )}
@@ -234,10 +245,6 @@ function OnboardingPage() {
           </motion.div>
         </AnimatePresence>
 
-        <div className="mt-4">
-          <AlertBanner tone="error" message={error} onDismiss={() => setError('')} />
-        </div>
-
         <div className="mt-6 flex items-center gap-3">
           {stepIndex > 0 && (
             <button
@@ -249,7 +256,7 @@ function OnboardingPage() {
               {t('onboarding.back')}
             </button>
           )}
-          <Button onClick={handleContinue} loading={submitting} disabled={!canContinue}>
+          <Button onClick={handleContinue} loading={submitting} loadingLabel={t('common.saving')} disabled={!canContinue}>
             {isLastStep ? t('onboarding.finish') : t('onboarding.continue')}
           </Button>
         </div>
@@ -261,7 +268,7 @@ function OnboardingPage() {
             disabled={submitting}
             className="mt-3 text-center text-sm text-muted hover:text-ink"
           >
-            {t('onboarding.skip')}
+            {submitting ? t('common.saving') : t('onboarding.skip')}
           </button>
         )}
       </div>
