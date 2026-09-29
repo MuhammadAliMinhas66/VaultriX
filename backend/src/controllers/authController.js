@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens.js';
+import { checkEmail, EMAIL_MESSAGES } from '../utils/emailValidation.js';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -39,6 +40,11 @@ export const signup = async (req, res, next) => {
 
     if (password.length < 8) {
       return res.status(400).json({ success: false, message: 'Password needs to be at least 8 characters.' });
+    }
+
+    const emailCheck = await checkEmail(email);
+    if (!emailCheck.ok) {
+      return res.status(400).json({ success: false, message: EMAIL_MESSAGES[emailCheck.reason] });
     }
 
     const existing = await User.findOne({ email: email.toLowerCase() });
