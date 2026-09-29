@@ -5,6 +5,9 @@ import User from '../models/User.js';
 import { signAccessToken, signRefreshToken } from '../utils/tokens.js';
 import { AVATAR_DIR } from '../middleware/upload.js';
 
+// Must match the dictionaries shipped in frontend/src/i18n/locales.
+const APP_LANGUAGES = ['en', 'fr', 'es', 'ar', 'hi', 'ur'];
+
 const REFRESH_COOKIE_NAME = 'vaultrix_refresh';
 
 const refreshCookieOptions = {
@@ -47,7 +50,12 @@ export const updateProfile = async (req, res, next) => {
 
     if (typeof country === 'string') user.country = country;
     if (typeof currency === 'string') user.currency = currency;
-    if (typeof language === 'string') user.language = language;
+    if (typeof language === 'string') {
+      if (!APP_LANGUAGES.includes(language)) {
+        return res.status(400).json({ success: false, message: 'That language is not supported.' });
+      }
+      user.language = language;
+    }
     if (completeOnboarding) user.onboardingCompleted = true;
 
     await user.save();

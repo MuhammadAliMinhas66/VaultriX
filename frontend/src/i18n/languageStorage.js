@@ -1,23 +1,30 @@
-const LANGUAGE_KEY = 'vaultrix_language';
-const CURRENCY_KEY = 'vaultrix_currency';
+// Only the *signed-out* language (login / signup screens) lives in localStorage.
+// Signed-in users never read or write this: their language comes from their own
+// account record, so nothing can leak from one account into another.
+const GUEST_LANGUAGE_KEY = 'vaultrix_guest_language';
 
-const read = (key) => {
+export const getGuestLanguage = () => {
   try {
-    return localStorage.getItem(key) || '';
+    return localStorage.getItem(GUEST_LANGUAGE_KEY) || '';
   } catch (error) {
     return '';
   }
 };
 
-const write = (key, value) => {
+export const setGuestLanguage = (language) => {
   try {
-    if (value) localStorage.setItem(key, value);
+    if (language) localStorage.setItem(GUEST_LANGUAGE_KEY, language);
   } catch (error) {
     // storage can be unavailable in private browsing, the UI still works without it
   }
 };
 
-export const getStoredLanguage = () => read(LANGUAGE_KEY);
-export const setStoredLanguage = (language) => write(LANGUAGE_KEY, language);
-export const getStoredCurrency = () => read(CURRENCY_KEY);
-export const setStoredCurrency = (currency) => write(CURRENCY_KEY, currency);
+// Legacy global keys from earlier versions were shared across accounts. Remove them.
+export const purgeLegacyPreferenceKeys = () => {
+  try {
+    localStorage.removeItem('vaultrix_language');
+    localStorage.removeItem('vaultrix_currency');
+  } catch (error) {
+    // nothing to clean up
+  }
+};

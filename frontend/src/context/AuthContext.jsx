@@ -2,27 +2,33 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { refresh as refreshSession, logout as logoutRequest } from '../services/authService.js';
 import { setAuthToken, setUnauthorizedHandler } from '../services/api.js';
 import {
-  getStoredLanguage,
-  setStoredLanguage,
-  getStoredCurrency,
-  setStoredCurrency,
+  getGuestLanguage,
+  setGuestLanguage as storeGuestLanguage,
+  purgeLegacyPreferenceKeys,
 } from '../i18n/languageStorage.js';
-import { detectBrowserLanguage, isSupportedLanguage, translate } from '../i18n/translate.js';
+import { resolveLanguage, isSupportedLanguage, translate } from '../i18n/translate.js';
 import { notify } from '../i18n/notifications.js';
 
 const AuthContext = createContext(null);
 
-const initialLanguage = () => {
-  const stored = getStoredLanguage();
-  return isSupportedLanguage(stored) ? stored : detectBrowserLanguage();
-};
-
 export function AuthProvider({ children }) {
+  // One-time cleanup of the old cross-account localStorage keys (runs once per page load).
+  useState(purgeLegacyPreferenceKeys);
+
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
-  const [language, setLanguageState] = useState(initialLanguage);
-  const [currency, setCurrencyState] = useState(() => getStoredCurrency());
+  // Language for signed-out screens only (login / signup). Never used once signed in.
+  const [guestLanguage, setGuestLanguageState] = useState(() => resolveLanguage(getGuestLanguage()));
+
+  // SINGLE SOURCE OF TRUTH for the application language. It is derived, never
+  // copied into a second state variable:
+  //   signed in  -> this account's saved language, English if none/unsupported
+  //   signed out -> the guest language (English by default)
+  // It only changes when the account record changes (Update preferences,
+  // onboarding) or when the session changes, so it cannot go stale or leak.
+  const language = user ? resolveLanguage(user.language) : guestLanguage;
+  const currency = user?.currency || '';
 
   const languageRef = useRef(language);
   const hadSessionRef = useRef(false);
@@ -32,17 +38,6 @@ export function AuthProvider({ children }) {
     setAccessToken(data.accessToken);
     setAuthToken(data.accessToken);
     hadSessionRef.current = true;
-
-    // Only adopt the account's saved language/currency when this browser has no
-    // local preference yet (first sign-in on a new device). If the person already
-    // picked something here - saved or not - that local choice always wins, so a
-    // stale server value never stomps a live selection on login or refresh.
-    if (!getStoredLanguage() && data.user?.language) {
-      setLanguage(data.user.language);
-    }
-    if (!getStoredCurrency() && data.user?.currency) {
-      setCurrency(data.user.currency);
-    }
   };
 
   const clearSession = () => {
@@ -56,22 +51,16 @@ export function AuthProvider({ children }) {
     setUser((prev) => (prev ? { ...prev, ...partialUser } : prev));
   };
 
-  const setLanguage = (code) => {
+  const setGuestLanguage = (code) => {
     if (!isSupportedLanguage(code)) return;
-    setLanguageState(code);
-    setStoredLanguage(code);
-  };
-
-  const setCurrency = (code) => {
-    if (!code) return;
-    setCurrencyState(code);
-    setStoredCurrency(code);
+    setGuestLanguageState(code);
+    storeGuestLanguage(code);
   };
 
   const signOut = async () => {
     await logoutRequest();
-    clearSession();
     notify.info(translate(languageRef.current, 'info.signedOut'));
+    clearSession();
   };
 
   useEffect(() => {
@@ -82,8 +71,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       if (!hadSessionRef.current) return;
-      clearSession();
       notify.warning(translate(languageRef.current, 'errors.sessionExpired'));
+      clearSession();
     });
 
     let cancelled = false;
@@ -109,8 +98,7 @@ export function AuthProvider({ children }) {
     isBootstrapping,
     language,
     currency,
-    setLanguage,
-    setCurrency,
+    setGuestLanguage,
     setSession,
     clearSession,
     updateUser,

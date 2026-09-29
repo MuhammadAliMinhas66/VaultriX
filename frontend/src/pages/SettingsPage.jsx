@@ -11,7 +11,7 @@ import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
 import { useTranslation } from '../i18n/useTranslation.js';
 import { useLocalizedOptions } from '../i18n/useLocalizedOptions.js';
 import { notify } from '../i18n/notifications.js';
-import { serverMessageKey } from '../i18n/translate.js';
+import { serverMessageKey, translate } from '../i18n/translate.js';
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
@@ -251,10 +251,16 @@ function PasswordSection() {
 }
 
 function PreferencesSection() {
-  const { user, updateUser, language, currency, setLanguage, setCurrency } = useAuth();
+  const { user, updateUser, language, currency } = useAuth();
   const { t, tServer } = useTranslation();
   const { countries, languages, currencies } = useLocalizedOptions();
+
+  // Everything here is a PENDING selection local to this form. Nothing is applied
+  // to the app (or saved) until "Update preferences" succeeds; country, language
+  // and currency are independent and never change one another.
   const [country, setCountry] = useState(user?.country || '');
+  const [pendingLanguage, setPendingLanguage] = useState(language);
+  const [pendingCurrency, setPendingCurrency] = useState(currency);
   const [saving, setSaving] = useState(false);
   const [countryError, setCountryError] = useState('');
 
@@ -268,9 +274,15 @@ function PreferencesSection() {
 
     setSaving(true);
     try {
-      const data = await updateProfile({ country, language, currency });
+      const data = await updateProfile({
+        country,
+        language: pendingLanguage,
+        currency: pendingCurrency,
+      });
+      // Committing the saved user is what switches the whole app to the new language.
       updateUser(data.user);
-      notify.success(t('status.preferencesSaved'));
+      // Announce in the language that was just applied, not the one being replaced.
+      notify.success(translate(pendingLanguage, 'status.preferencesSaved'));
     } catch (error) {
       notify.error(tServer(error));
     } finally {
@@ -292,18 +304,21 @@ function PreferencesSection() {
           placeholder={t('combobox.searchCountries')}
           error={countryError && t(countryError)}
         />
-        <Combobox
-          label={t('dashboard.language')}
-          items={languages}
-          value={language}
-          onChange={setLanguage}
-          placeholder={t('combobox.searchLanguages')}
-        />
+        <div className="flex flex-col gap-1.5">
+          <Combobox
+            label={t('settings.appLanguage')}
+            items={languages}
+            value={pendingLanguage}
+            onChange={setPendingLanguage}
+            placeholder={t('combobox.searchLanguages')}
+          />
+          <p className="text-xs text-muted">{t('settings.languageHint')}</p>
+        </div>
         <Combobox
           label={t('dashboard.currency')}
           items={currencies}
-          value={currency}
-          onChange={setCurrency}
+          value={pendingCurrency}
+          onChange={setPendingCurrency}
           placeholder={t('combobox.searchCurrencies')}
         />
 

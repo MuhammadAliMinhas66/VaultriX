@@ -1,25 +1,12 @@
 import { translations } from './translations.js';
-import { LANGUAGES } from '../utils/options.js';
-
 export const DEFAULT_LANGUAGE = 'en';
 
-const KNOWN_LANGUAGE_CODES = new Set(LANGUAGES.map((item) => item.value));
+// A language is an application language only if a dictionary exists for it.
+export const isSupportedLanguage = (code) =>
+  typeof code === 'string' && Object.prototype.hasOwnProperty.call(translations, code);
 
-export const isSupportedLanguage = (code) => KNOWN_LANGUAGE_CODES.has(code);
-
-export const detectBrowserLanguage = () => {
-  try {
-    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
-    for (const candidate of candidates) {
-      const base = String(candidate || '').toLowerCase().split('-')[0];
-      const code = base === 'fil' ? 'tl' : base === 'iw' ? 'he' : base === 'in' ? 'id' : base;
-      if (isSupportedLanguage(code)) return code;
-    }
-  } catch (error) {
-    return DEFAULT_LANGUAGE;
-  }
-  return DEFAULT_LANGUAGE;
-};
+// Anything unknown or missing (new account, legacy value such as "ko") is English.
+export const resolveLanguage = (code) => (isSupportedLanguage(code) ? code : DEFAULT_LANGUAGE);
 
 const interpolate = (template, vars) => {
   if (!vars) return template;
@@ -58,6 +45,7 @@ const SERVER_MESSAGE_KEYS = {
   'That record already exists. Check the details and try again.': 'errors.recordExists',
   'Some of the details look incomplete. Check the form and try again.': 'errors.detailsIncomplete',
   'Please upload a JPG, PNG or WEBP image.': 'errors.uploadImageType',
+  'That language is not supported.': 'errors.languageUnsupported',
 };
 
 export const serverMessageKey = (error) =>

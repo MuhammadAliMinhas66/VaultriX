@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Camera } from 'lucide-react';
+import { Camera, Loader2, Trash2 } from 'lucide-react';
 import Button from '../components/Button.jsx';
 import Combobox from '../components/Combobox.jsx';
 import Logo from '../components/Logo.jsx';
@@ -17,9 +17,10 @@ import { notify } from '../i18n/notifications.js';
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
 
-function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect, prompt }) {
+function PhotoStep({ name, existingAvatarUrl, file, previewUrl, error, uploading, onSelect, onClear, t }) {
   const inputRef = useRef(null);
   const displaySrc = previewUrl || resolveAvatarUrl(existingAvatarUrl);
+  const hasImage = Boolean(displaySrc);
 
   return (
     <div className="flex flex-col items-center">
@@ -30,25 +31,75 @@ function PhotoStep({ name, existingAvatarUrl, file, previewUrl, onSelect, prompt
         className="hidden"
         onChange={(event) => {
           const selected = event.target.files?.[0];
+          event.target.value = '';
           if (selected) onSelect(selected);
         }}
       />
+
       <motion.button
         type="button"
-        whileTap={{ scale: 0.96 }}
+        whileTap={{ scale: 0.97 }}
         onClick={() => inputRef.current?.click()}
-        className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-dashed border-border bg-surface"
+        disabled={uploading}
+        aria-label={hasImage ? t('onboarding.photoChange') : t('onboarding.photoChoose')}
+        aria-busy={uploading ? 'true' : undefined}
+        className={`group relative flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-surface transition ${
+          error
+            ? 'border-2 border-red-400'
+            : hasImage
+              ? 'border border-border'
+              : 'border-2 border-dashed border-border hover:border-ink/40'
+        }`}
       >
-        {displaySrc ? (
+        {hasImage ? (
           <img src={displaySrc} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="text-lg font-medium text-muted">{initialsFromName(name) || '?'}</span>
+          <span className="flex flex-col items-center gap-1 text-muted">
+            <span className="text-xl font-medium">{initialsFromName(name) || '?'}</span>
+            <Camera className="h-4 w-4" />
+          </span>
         )}
-        <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/40 hover:opacity-100">
-          <Camera className="h-5 w-5" />
-        </span>
+        {hasImage && !uploading && (
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/40 group-hover:opacity-100 group-focus-visible:bg-black/40 group-focus-visible:opacity-100">
+            <Camera className="h-5 w-5" />
+          </span>
+        )}
+        {uploading && (
+          <span className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <Loader2 className="h-5 w-5 animate-spin text-ink" />
+          </span>
+        )}
       </motion.button>
-      <p className="mt-3 text-xs text-muted">{file ? file.name : prompt}</p>
+
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="rounded-lg border border-border bg-white px-3.5 py-2 text-sm font-medium text-ink transition hover:bg-black/[0.03] disabled:cursor-wait disabled:opacity-70"
+        >
+          {uploading ? t('common.uploading') : hasImage ? t('onboarding.photoChange') : t('onboarding.photoChoose')}
+        </button>
+        {file && !uploading && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted transition hover:text-ink"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {t('onboarding.photoRemove')}
+          </button>
+        )}
+      </div>
+
+      {file && <p className="mt-3 max-w-full truncate text-xs text-ink">{file.name}</p>}
+      {error ? (
+        <p role="alert" className="mt-2 text-center text-xs font-medium text-red-600">
+          {error}
+        </p>
+      ) : (
+        <p className="mt-2 text-center text-xs text-muted">{t('onboarding.photoHint')}</p>
+      )}
     </div>
   );
 }
@@ -57,14 +108,19 @@ const steps = ['country', 'language', 'currency', 'photo'];
 
 function OnboardingPage() {
   const navigate = useNavigate();
-  const { user, updateUser, setLanguage: setAppLanguage } = useAuth();
+  const { user, updateUser, language: appLanguage, currency: savedCurrency } = useAuth();
   const { t, tServer } = useTranslation();
   const { countries, languages, currencies } = useLocalizedOptions();
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [country, setCountry] = useState('');
-  const [language, setLanguage] = useState('');
-  const [currency, setCurrency] = useState('');
+  // Prefilled from THIS account only (empty for a brand-new one). The language
+  // starts as the app's current language (English for a new account) and stays a
+  // pending choice until the language step is confirmed with Continue.
+  const [country, setCountry] = useState(user?.country || '');
+  const [language, setLanguage] = useState(appLanguage);
+  const [currency, setCurrency] = useState(savedCurrency || '');
+  const [photoError, setPhotoError] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoFile, setPhotoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -92,27 +148,35 @@ function OnboardingPage() {
 
   const handlePhotoSelect = (file) => {
     if (!PHOTO_TYPES.includes(file.type)) {
-      notify.error(t('errors.uploadImageType'));
+      setPhotoError(t('errors.uploadImageType'));
       return;
     }
     if (file.size > PHOTO_MAX_BYTES) {
-      notify.error(t('errors.imageTooLarge'));
+      setPhotoError(t('errors.imageTooLarge'));
       return;
     }
+    setPhotoError('');
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPhotoFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleLanguageChange = (code) => {
-    setLanguage(code);
-    setAppLanguage(code);
+  const handlePhotoClear = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPhotoFile(null);
+    setPreviewUrl('');
+    setPhotoError('');
   };
 
   const finish = async () => {
     if (photoFile) {
-      const avatarData = await uploadAvatar(photoFile);
-      updateUser(avatarData.user);
+      setUploadingPhoto(true);
+      try {
+        const avatarData = await uploadAvatar(photoFile);
+        updateUser(avatarData.user);
+      } finally {
+        setUploadingPhoto(false);
+      }
     }
     const data = await updateProfile({ completeOnboarding: true });
     updateUser(data.user);
@@ -201,6 +265,7 @@ function OnboardingPage() {
                 <div className="mt-6">
                   <Combobox items={countries} value={country} onChange={setCountry} placeholder={t('combobox.searchCountries')} />
                 </div>
+                <p className="mt-3 text-xs text-muted">{t('onboarding.countryNote')}</p>
               </div>
             )}
 
@@ -210,8 +275,9 @@ function OnboardingPage() {
                 <h1 className="mt-3 text-xl font-semibold text-ink">{t('onboarding.languageTitle')}</h1>
                 <p className="mt-1 text-sm text-muted">{t('onboarding.languageSubtitle')}</p>
                 <div className="mt-6">
-                  <Combobox items={languages} value={language} onChange={handleLanguageChange} placeholder={t('combobox.searchLanguages')} />
+                  <Combobox items={languages} value={language} onChange={setLanguage} placeholder={t('combobox.searchLanguages')} />
                 </div>
+                <p className="mt-3 text-xs text-muted">{t('onboarding.languageNote')}</p>
               </div>
             )}
 
@@ -223,6 +289,7 @@ function OnboardingPage() {
                 <div className="mt-6">
                   <Combobox items={currencies} value={currency} onChange={setCurrency} placeholder={t('combobox.searchCurrencies')} />
                 </div>
+                <p className="mt-3 text-xs text-muted">{t('onboarding.currencyNote')}</p>
               </div>
             )}
 
@@ -236,8 +303,11 @@ function OnboardingPage() {
                     existingAvatarUrl={user?.avatarUrl}
                     file={photoFile}
                     previewUrl={previewUrl}
+                    error={photoError}
+                    uploading={uploadingPhoto}
                     onSelect={handlePhotoSelect}
-                    prompt={t('onboarding.uploadPrompt')}
+                    onClear={handlePhotoClear}
+                    t={t}
                   />
                 </div>
               </div>
@@ -276,4 +346,10 @@ function OnboardingPage() {
   );
 }
 
-export default OnboardingPage;
+// Keyed by account id so onboarding state can never carry over between users.
+function OnboardingRoute() {
+  const { user } = useAuth();
+  return <OnboardingPage key={user?.id} />;
+}
+
+export default OnboardingRoute;
