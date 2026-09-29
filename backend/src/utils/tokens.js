@@ -15,3 +15,16 @@ export const signRefreshToken = (user) =>
 export const verifyAccessToken = (token) => jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
 export const verifyRefreshToken = (token) => jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+
+const resetSecret = () => `${process.env.JWT_ACCESS_SECRET}:password-reset`;
+
+export const signResetToken = ({ sub, nonce }) =>
+  jwt.sign({ sub, nonce, purpose: 'password-reset' }, resetSecret(), { expiresIn: '10m' });
+
+export const verifyResetToken = (token) => {
+  const payload = jwt.verify(token, resetSecret());
+  if (payload.purpose !== 'password-reset') {
+    throw new Error('Wrong token purpose');
+  }
+  return payload;
+};
