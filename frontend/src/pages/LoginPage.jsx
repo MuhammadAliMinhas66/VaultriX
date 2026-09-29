@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
+import EmailField from '../components/EmailField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
@@ -20,7 +21,7 @@ function LoginPage() {
   const { t, tServer } = useTranslation();
   const redirectTo = location.state?.from?.pathname || '/dashboard';
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(location.state?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -83,16 +84,14 @@ function LoginPage() {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-        <FormField
+        <EmailField
           label={t('auth.emailLabel')}
-          type="email"
           value={email}
           onChange={(event) => {
             setEmail(event.target.value);
             clearError('email');
           }}
           placeholder={t('auth.emailPlaceholder')}
-          autoComplete="email"
           error={fieldErrors.email && t(fieldErrors.email)}
         />
 
@@ -120,13 +119,13 @@ function LoginPage() {
         </div>
 
         <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => notify.info(t('info.forgotPasswordSoon'))}
+          <Link
+            to="/forgot-password"
+            state={{ email: email.trim() }}
             className="text-sm text-muted hover:text-ink"
           >
             {t('auth.forgotPassword')}
-          </button>
+          </Link>
         </div>
 
         <Button type="submit" loading={loading} loadingLabel={t('auth.signingIn')}>
