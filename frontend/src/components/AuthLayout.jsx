@@ -8,7 +8,7 @@ function AuthLayout({ title, subtitle, children }) {
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
       <div className="hidden flex-1 flex-col bg-ink px-12 pb-10 pt-10 text-white lg:flex xl:px-16">
         <Logo size="lg" dark />
 
@@ -19,7 +19,7 @@ function AuthLayout({ title, subtitle, children }) {
         </p>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center px-6 pb-12 pt-24">
+      <div className="relative flex flex-1 items-center justify-center px-5 pb-12 pt-24 sm:px-8">
         <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
           <LanguageSwitcher />
         </div>
@@ -28,7 +28,7 @@ function AuthLayout({ title, subtitle, children }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-sm"
+          className="w-full max-w-sm sm:max-w-md"
         >
           <h1 className="text-2xl font-semibold text-ink">{title}</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>
