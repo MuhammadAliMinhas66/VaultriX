@@ -1,8 +1,11 @@
 import { translations } from './translations.js';
+import { LANGUAGES } from '../utils/options.js';
 
 export const DEFAULT_LANGUAGE = 'en';
 
-export const isSupportedLanguage = (code) => Boolean(code && translations[code]);
+const KNOWN_LANGUAGE_CODES = new Set(LANGUAGES.map((item) => item.value));
+
+export const isSupportedLanguage = (code) => KNOWN_LANGUAGE_CODES.has(code);
 
 export const detectBrowserLanguage = () => {
   try {

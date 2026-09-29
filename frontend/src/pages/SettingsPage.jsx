@@ -11,7 +11,7 @@ import { resolveAvatarUrl, initialsFromName } from '../utils/avatar.js';
 import { useTranslation } from '../i18n/useTranslation.js';
 import { useLocalizedOptions } from '../i18n/useLocalizedOptions.js';
 import { notify } from '../i18n/notifications.js';
-import { translate, serverMessageKey } from '../i18n/translate.js';
+import { serverMessageKey } from '../i18n/translate.js';
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PHOTO_MAX_BYTES = 3 * 1024 * 1024;
@@ -255,39 +255,8 @@ function PreferencesSection() {
   const { t, tServer } = useTranslation();
   const { countries, languages, currencies } = useLocalizedOptions();
   const [country, setCountry] = useState(user?.country || '');
-  const [savingField, setSavingField] = useState('');
   const [saving, setSaving] = useState(false);
   const [countryError, setCountryError] = useState('');
-
-  const handleLanguageChange = async (code) => {
-    if (code === language) return;
-    setLanguage(code);
-    setSavingField('language');
-    try {
-      const data = await updateProfile({ language: code });
-      updateUser(data.user);
-      notify.success(translate(code, 'status.languageUpdated'));
-    } catch (error) {
-      notify.warning(translate(code, 'warning.prefsNotSaved'));
-    } finally {
-      setSavingField('');
-    }
-  };
-
-  const handleCurrencyChange = async (code) => {
-    if (code === currency) return;
-    setCurrency(code);
-    setSavingField('currency');
-    try {
-      const data = await updateProfile({ currency: code });
-      updateUser(data.user);
-      notify.success(t('status.currencyUpdated'));
-    } catch (error) {
-      notify.warning(t('warning.prefsNotSaved'));
-    } finally {
-      setSavingField('');
-    }
-  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -327,17 +296,15 @@ function PreferencesSection() {
           label={t('dashboard.language')}
           items={languages}
           value={language}
-          onChange={handleLanguageChange}
+          onChange={setLanguage}
           placeholder={t('combobox.searchLanguages')}
-          loading={savingField === 'language'}
         />
         <Combobox
           label={t('dashboard.currency')}
           items={currencies}
           value={currency}
-          onChange={handleCurrencyChange}
+          onChange={setCurrency}
           placeholder={t('combobox.searchCurrencies')}
-          loading={savingField === 'currency'}
         />
 
         <div>

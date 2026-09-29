@@ -32,6 +32,17 @@ export function AuthProvider({ children }) {
     setAccessToken(data.accessToken);
     setAuthToken(data.accessToken);
     hadSessionRef.current = true;
+
+    // Only adopt the account's saved language/currency when this browser has no
+    // local preference yet (first sign-in on a new device). If the person already
+    // picked something here - saved or not - that local choice always wins, so a
+    // stale server value never stomps a live selection on login or refresh.
+    if (!getStoredLanguage() && data.user?.language) {
+      setLanguage(data.user.language);
+    }
+    if (!getStoredCurrency() && data.user?.currency) {
+      setCurrency(data.user.currency);
+    }
   };
 
   const clearSession = () => {
@@ -67,14 +78,6 @@ export function AuthProvider({ children }) {
     languageRef.current = language;
     document.documentElement.lang = language;
   }, [language]);
-
-  useEffect(() => {
-    if (user?.language) setLanguage(user.language);
-  }, [user?.language]);
-
-  useEffect(() => {
-    if (user?.currency) setCurrency(user.currency);
-  }, [user?.currency]);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
