@@ -49,3 +49,35 @@ export const googleAuth = async (idToken) => {
     throw toApiError(error, 'auth.googleFailed');
   }
 };
+
+export const validateEmail = async (email) => {
+  const { data } = await api.post('/auth/validate-email', { email });
+  return data;
+};
+
+export const requestPasswordReset = async (email) => {
+  try {
+    const { data } = await api.post('/auth/forgot-password', { email });
+    return data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+};
+
+export const verifyResetCode = async ({ email, code }) => {
+  try {
+    const { data } = await api.post('/auth/verify-reset-code', { email, code });
+    return data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+};
+
+export const resetPassword = async ({ resetToken, newPassword }) => {
+  try {
+    const { data } = await api.post('/auth/reset-password', { resetToken, newPassword });
+    return data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+};
