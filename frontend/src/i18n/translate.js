@@ -46,6 +46,16 @@ const SERVER_MESSAGE_KEYS = {
   'Some of the details look incomplete. Check the form and try again.': 'errors.detailsIncomplete',
   'Please upload a JPG, PNG or WEBP image.': 'errors.uploadImageType',
   'That language is not supported.': 'errors.languageUnsupported',
+  'Enter a valid email address.': 'auth.emailInvalid',
+  'Temporary or disposable email addresses are not allowed. Use your permanent email.': 'auth.emailDisposable',
+  'That email domain cannot receive mail. Check the spelling.': 'auth.emailNoMailServer',
+  'Please wait a moment before requesting another code.': 'errors.otpWait',
+  'Too many code requests. Please try again in an hour.': 'errors.otpHourlyLimit',
+  'That code is not right. Check it and try again.': 'errors.otpWrong',
+  'That code has expired. Request a new one.': 'errors.otpExpired',
+  'Too many wrong codes. Request a new one.': 'errors.otpTooManyAttempts',
+  'Your reset session has expired. Please start again.': 'errors.resetSessionExpired',
+  'Enter a new password to continue.': 'errors.newPasswordRequired',
 };
 
 export const serverMessageKey = (error) =>
