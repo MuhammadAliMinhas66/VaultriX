@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
+import EmailField from '../components/EmailField.jsx';
 import Button from '../components/Button.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
@@ -20,6 +21,7 @@ function SignupPage() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [emailStatus, setEmailStatus] = useState('idle');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,7 +40,9 @@ function SignupPage() {
     const next = {};
     if (!name.trim()) next.name = 'auth.nameRequired';
     if (!email.trim()) next.email = 'auth.emailRequired';
-    else if (!EMAIL_PATTERN.test(email.trim())) next.email = 'auth.emailInvalid';
+    else if (!EMAIL_PATTERN.test(email.trim()) || emailStatus === 'invalid') next.email = 'auth.emailInvalid';
+    else if (emailStatus === 'disposable') next.email = 'auth.emailDisposable';
+    else if (emailStatus === 'no_mail_server') next.email = 'auth.emailNoMailServer';
     if (!password) next.password = 'auth.passwordRequired';
     else if (password.length < 8) next.password = 'auth.passwordTooShort';
     setFieldErrors(next);
@@ -88,16 +92,16 @@ function SignupPage() {
           error={fieldErrors.name && t(fieldErrors.name)}
         />
 
-        <FormField
+        <EmailField
           label={t('auth.emailLabel')}
-          type="email"
           value={email}
           onChange={(event) => {
             setEmail(event.target.value);
             clearError('email');
           }}
           placeholder={t('auth.emailPlaceholder')}
-          autoComplete="email"
+          checkProvider
+          onStatusChange={setEmailStatus}
           error={fieldErrors.email && t(fieldErrors.email)}
         />
 
