@@ -8,8 +8,8 @@ function AuthLayout({ title, subtitle, children }) {
   const { t } = useTranslation();
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background lg:flex-row">
-      <div className="hidden flex-1 flex-col bg-ink px-12 pb-10 pt-10 text-white lg:flex xl:px-16">
+    <div className="flex min-h-[100dvh] flex-col bg-background lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
+      <div className="hidden flex-1 flex-col justify-between overflow-y-auto bg-ink px-12 py-8 text-white lg:flex xl:px-16 xl:py-10">
         <Logo size="lg" dark />
 
         <AuthVisual />
@@ -19,7 +19,7 @@ function AuthLayout({ title, subtitle, children }) {
         </p>
       </div>
 
-      <div className="relative flex flex-1 items-center justify-center px-5 pb-12 pt-24 sm:px-8">
+      <div className="relative flex flex-1 items-center justify-center overflow-y-auto px-5 py-16 sm:px-8 sm:py-20">
         <div className="absolute right-4 top-4 z-20 sm:right-6 sm:top-6">
           <LanguageSwitcher />
         </div>
