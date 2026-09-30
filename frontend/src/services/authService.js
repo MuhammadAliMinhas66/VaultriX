@@ -55,9 +55,9 @@ export const validateEmail = async (email) => {
   return data;
 };
 
-export const requestPasswordReset = async (email) => {
+export const requestPasswordReset = async ({ email, captchaToken, resend = false }) => {
   try {
-    const { data } = await api.post('/auth/forgot-password', { email });
+    const { data } = await api.post('/auth/forgot-password', { email, captchaToken, resend });
     return data;
   } catch (error) {
     throw toApiError(error);
