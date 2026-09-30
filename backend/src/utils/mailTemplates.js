@@ -39,16 +39,6 @@ export const otpEmail = ({ name, code, minutes }) => ({
   ),
 });
 
-export const googleAccountEmail = ({ name }) => ({
-  subject: 'Sign in to Vaultrix with Google',
-  text: `Hi ${name || 'there'},\n\nSomeone asked to reset the password for this email on Vaultrix. This account signs in with Google, so there is no password to reset. Use the Continue with Google button on the sign in page.\n\nIf this was not you, you can ignore this email.\n`,
-  html: shell(
-    'This account uses Google sign in',
-    `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#3b3b40;">Hi ${escapeHtml(name || 'there')}, someone asked to reset the password for this email on Vaultrix.</p>
-     <p style="margin:0;font-size:14px;line-height:1.6;color:#3b3b40;">This account signs in with Google, so there is no password to reset. Use the Continue with Google button on the sign in page.</p>`
-  ),
-});
-
 export const passwordChangedEmail = ({ name }) => ({
   subject: 'Your Vaultrix password was changed',
   text: `Hi ${name || 'there'},\n\nThe password for your Vaultrix account was just changed and all other sessions were signed out.\n\nIf this was not you, reset your password again right away.\n`,

@@ -4,8 +4,12 @@ import User from '../models/User.js';
 import PasswordReset from '../models/PasswordReset.js';
 import { signResetToken, verifyResetToken } from '../utils/tokens.js';
 import { checkEmail, parseEmail, EMAIL_MESSAGES } from '../utils/emailValidation.js';
+import { isDisposableDomain } from '../utils/disposableDomains.js';
+import { validatePassword } from '../utils/validators.js';
+import { checkCaptcha } from '../middleware/captcha.js';
+import { securityLog } from '../utils/securityLog.js';
 import { sendMail } from '../utils/mailer.js';
-import { otpEmail, googleAccountEmail, passwordChangedEmail } from '../utils/mailTemplates.js';
+import { otpEmail, passwordChangedEmail } from '../utils/mailTemplates.js';
 
 const OTP_LENGTH = 6;
 const OTP_TTL_MINUTES = 10;
@@ -32,7 +36,8 @@ const MESSAGES = {
   tooMany: 'Too many wrong codes. Request a new one.',
   session: 'Your reset session has expired. Please start again.',
   passwordRequired: 'Enter a new password to continue.',
-  passwordShort: 'New password needs to be at least 8 characters.',
+  noAccount: 'No account is registered with this email.',
+  googleOnly: 'This account signs in with Google. Use the Continue with Google button instead.',
 };
 
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
@@ -59,10 +64,22 @@ export const forgotPassword = async (req, res, next) => {
     const parsed = parseEmail(req.body?.email);
     if (!parsed) return fail(res, 400, EMAIL_MESSAGES.format);
 
+    if (isDisposableDomain(parsed.domain)) {
+      securityLog('reset_disposable_blocked', req, { domain: parsed.domain });
+      return fail(res, 400, EMAIL_MESSAGES.disposable);
+    }
+
     const { email } = parsed;
     const now = Date.now();
 
     const existing = await PasswordReset.findOne({ email });
+    const isResend = req.body?.resend === true && Boolean(existing);
+
+    if (!isResend) {
+      const captcha = await checkCaptcha(req);
+      if (!captcha.ok) return fail(res, captcha.status, captcha.message);
+    }
+
     const inWindow = Boolean(existing) && now - existing.windowStartedAt.getTime() < HOUR_MS;
 
     if (existing && now - existing.lastSentAt.getTime() < RESEND_COOLDOWN_MS) {
@@ -74,16 +91,24 @@ export const forgotPassword = async (req, res, next) => {
     }
 
     const user = await User.findOne({ email });
-    const canUseCode = Boolean(user?.passwordHash);
+
+    if (!user) {
+      securityLog('reset_unknown_email', req);
+      return fail(res, 404, MESSAGES.noAccount);
+    }
+
+    if (!user.passwordHash) {
+      return fail(res, 400, MESSAGES.googleOnly);
+    }
 
     const code = generateCode();
-    const otpHash = await bcrypt.hash(canUseCode ? code : crypto.randomBytes(12).toString('hex'), 10);
+    const otpHash = await bcrypt.hash(code, 10);
 
     await PasswordReset.findOneAndUpdate(
       { email },
       {
         $set: {
-          userId: canUseCode ? user._id : null,
+          userId: user._id,
           otpHash,
           otpExpiresAt: new Date(now + OTP_TTL_MS),
           attempts: 0,
@@ -99,11 +124,7 @@ export const forgotPassword = async (req, res, next) => {
       { upsert: true }
     );
 
-    if (user && canUseCode) {
-      sendInBackground(otpEmail({ name: user.name, code, minutes: OTP_TTL_MINUTES }), email);
-    } else if (user) {
-      sendInBackground(googleAccountEmail({ name: user.name }), email);
-    }
+    sendInBackground(otpEmail({ name: user.name, code, minutes: OTP_TTL_MINUTES }), email);
 
     res.json({
       success: true,
@@ -142,7 +163,8 @@ export const verifyResetCode = async (req, res, next) => {
 
     const matches = await bcrypt.compare(code, record.otpHash);
 
-    if (!matches || !record.userId) {
+    if (!matches) {
+      securityLog('reset_wrong_code', req, { userId: String(record.userId) });
       return fail(res, 400, record.attempts >= MAX_ATTEMPTS ? MESSAGES.tooMany : MESSAGES.wrong);
     }
 
@@ -167,7 +189,6 @@ export const resetPassword = async (req, res, next) => {
     const { resetToken, newPassword } = req.body || {};
 
     if (!resetToken || !newPassword) return fail(res, 400, MESSAGES.passwordRequired);
-    if (typeof newPassword !== 'string' || newPassword.length < 8) return fail(res, 400, MESSAGES.passwordShort);
 
     let payload;
     try {
@@ -186,6 +207,9 @@ export const resetPassword = async (req, res, next) => {
     const user = record ? await User.findById(payload.sub) : null;
 
     if (!record || !user) return fail(res, 400, MESSAGES.session);
+
+    const passwordError = validatePassword(newPassword, { email: user.email, name: user.name });
+    if (passwordError) return fail(res, 400, passwordError);
 
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.tokenVersion = (user.tokenVersion || 0) + 1;
