@@ -8,20 +8,25 @@ import {
 } from '../controllers/passwordResetController.js';
 import { authenticate } from '../middleware/auth.js';
 import {
+  loginLimiter,
+  signupLimiter,
+  googleLimiter,
+  refreshLimiter,
   forgotLimiter,
   verifyCodeLimiter,
   resetLimiter,
   emailCheckLimiter,
 } from '../middleware/rateLimiters.js';
+import { verifyCaptcha } from '../middleware/captcha.js';
 
 const router = Router();
 
-router.post('/signup', signup);
-router.post('/login', login);
+router.post('/signup', signupLimiter, verifyCaptcha, signup);
+router.post('/login', loginLimiter, verifyCaptcha, login);
 router.post('/logout', logout);
-router.post('/google', googleAuth);
-router.post('/google/callback', googleCallback);
-router.post('/refresh', refresh);
+router.post('/google', googleLimiter, googleAuth);
+router.post('/google/callback', googleLimiter, googleCallback);
+router.post('/refresh', refreshLimiter, refresh);
 router.get('/me', authenticate, me);
 router.post('/validate-email', emailCheckLimiter, validateEmailAddress);
 router.post('/forgot-password', forgotLimiter, forgotPassword);
