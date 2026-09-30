@@ -3,11 +3,29 @@ import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens.js';
-import { checkEmail, EMAIL_MESSAGES } from '../utils/emailValidation.js';
+import { checkEmail, parseEmail, EMAIL_MESSAGES } from '../utils/emailValidation.js';
+import { isDisposableDomain } from '../utils/disposableDomains.js';
+import { validatePassword, cleanName, isNonEmptyString, NAME_MESSAGE } from '../utils/validators.js';
+import { securityLog } from '../utils/securityLog.js';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const REFRESH_COOKIE_NAME = 'vaultrix_refresh';
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 15;
+const LOCK_MS = LOCK_MINUTES * 60 * 1000;
+const MAX_PASSWORD_INPUT = 128;
+const DUMMY_HASH = bcrypt.hashSync('vaultrix-timing-guard', 12);
+
+const MESSAGES = {
+  loginRequired: 'Enter your email and password to continue.',
+  invalidLogin: 'That email or password is not right.',
+  signupRequired: 'Name, email and password are all required.',
+  duplicate: 'An account with this email already exists.',
+  locked: `Too many failed sign-in attempts. Please try again in ${LOCK_MINUTES} minutes.`,
+  googleAccount: 'This account was created with Google. Use the Google sign-in button instead.',
+  googleUnverified: 'Google sign-in could not be verified.',
+};
 
 const refreshCookieOptions = {
   httpOnly: true,
@@ -30,36 +48,51 @@ const publicUser = (user) => ({
   onboardingCompleted: user.onboardingCompleted,
 });
 
+const fail = (res, status, message) => res.status(status).json({ success: false, message });
+
+const startSession = (res, user, status = 200) => {
+  const accessToken = signAccessToken(user);
+  const refreshToken = signRefreshToken(user);
+
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
+  res.status(status).json({ success: true, accessToken, user: publicUser(user) });
+};
+
 export const signup = async (req, res, next) => {
+  let organization = null;
+
   try {
-    const { name, email, password } = req.body;
+    const body = req.body || {};
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: 'Name, email and password are all required.' });
+    if (!isNonEmptyString(body.name) || !isNonEmptyString(body.email) || typeof body.password !== 'string' || !body.password) {
+      return fail(res, 400, MESSAGES.signupRequired);
     }
 
-    if (password.length < 8) {
-      return res.status(400).json({ success: false, message: 'Password needs to be at least 8 characters.' });
-    }
+    const name = cleanName(body.name);
+    if (!name) return fail(res, 400, NAME_MESSAGE);
 
-    const emailCheck = await checkEmail(email);
+    const passwordError = validatePassword(body.password, { email: body.email, name });
+    if (passwordError) return fail(res, 400, passwordError);
+
+    const emailCheck = await checkEmail(body.email);
     if (!emailCheck.ok) {
-      return res.status(400).json({ success: false, message: EMAIL_MESSAGES[emailCheck.reason] });
+      securityLog('signup_email_rejected', req, { reason: emailCheck.reason });
+      return fail(res, 400, EMAIL_MESSAGES[emailCheck.reason]);
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
-    }
+    const email = emailCheck.email;
 
-    const organization = await Organization.create({ name: `${name}'s workspace` });
+    const existing = await User.findOne({ email });
+    if (existing) return fail(res, 409, MESSAGES.duplicate);
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    organization = await Organization.create({ name: `${name}'s workspace` });
+
+    const passwordHash = await bcrypt.hash(body.password, 12);
 
     const user = await User.create({
       orgId: organization._id,
       name,
-      email: email.toLowerCase(),
+      email,
       passwordHash,
       role: 'owner',
     });
@@ -67,46 +100,78 @@ export const signup = async (req, res, next) => {
     organization.ownerId = user._id;
     await organization.save();
 
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-    res.status(201).json({ success: true, accessToken, user: publicUser(user) });
+    startSession(res, user, 201);
   } catch (error) {
+    if (organization) {
+      Organization.findByIdAndDelete(organization._id).catch(() => {});
+    }
+    if (error?.code === 11000) return fail(res, 409, MESSAGES.duplicate);
     next(error);
   }
 };
 
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Enter your email and password to continue.' });
+    if (!isNonEmptyString(email) || typeof password !== 'string' || !password) {
+      return fail(res, 400, MESSAGES.loginRequired);
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const parsed = parseEmail(email);
+    if (!parsed) return fail(res, 400, EMAIL_MESSAGES.format);
+
+    if (isDisposableDomain(parsed.domain)) {
+      securityLog('login_disposable_blocked', req, { domain: parsed.domain });
+      return fail(res, 400, EMAIL_MESSAGES.disposable);
+    }
+
+    if (password.length > MAX_PASSWORD_INPUT) {
+      await bcrypt.compare('x', DUMMY_HASH);
+      return fail(res, 401, MESSAGES.invalidLogin);
+    }
+
+    const user = await User.findOne({ email: parsed.email });
+
     if (!user) {
-      return res.status(401).json({ success: false, message: 'That email or password is not right.' });
+      await bcrypt.compare(password, DUMMY_HASH);
+      securityLog('login_unknown_email', req);
+      return fail(res, 401, MESSAGES.invalidLogin);
+    }
+
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      securityLog('login_while_locked', req, { userId: String(user._id) });
+      return fail(res, 429, MESSAGES.locked);
     }
 
     if (!user.passwordHash) {
-      return res.status(400).json({
-        success: false,
-        message: 'This account was created with Google. Use the Google sign-in button instead.',
-      });
+      return fail(res, 400, MESSAGES.googleAccount);
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+
     if (!passwordMatches) {
-      return res.status(401).json({ success: false, message: 'That email or password is not right.' });
+      const updated = await User.findByIdAndUpdate(user._id, { $inc: { failedLoginAttempts: 1 } }, { new: true });
+
+      if (updated && updated.failedLoginAttempts >= MAX_FAILED_LOGINS) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { lockUntil: new Date(Date.now() + LOCK_MS), failedLoginAttempts: 0 } }
+        );
+        securityLog('account_locked', req, { userId: String(user._id) });
+        return fail(res, 429, MESSAGES.locked);
+      }
+
+      securityLog('login_failed', req, { userId: String(user._id) });
+      return fail(res, 401, MESSAGES.invalidLogin);
     }
 
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { failedLoginAttempts: 0, lockUntil: null, lastLoginAt: new Date() } }
+    );
 
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-    res.json({ success: true, accessToken, user: publicUser(user) });
+    startSession(res, user);
   } catch (error) {
     next(error);
   }
@@ -121,7 +186,7 @@ export const refresh = async (req, res) => {
   const token = req.cookies?.[REFRESH_COOKIE_NAME];
 
   if (!token) {
-    return res.status(401).json({ success: false, message: 'Please sign in to continue.' });
+    return fail(res, 401, 'Please sign in to continue.');
   }
 
   try {
@@ -130,17 +195,13 @@ export const refresh = async (req, res) => {
 
     if (!user || (user.tokenVersion || 0) !== payload.tokenVersion) {
       res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
-      return res.status(401).json({ success: false, message: 'Please sign in again.' });
+      return fail(res, 401, 'Please sign in again.');
     }
 
-    const accessToken = signAccessToken(user);
-    const newRefreshToken = signRefreshToken(user);
-
-    res.cookie(REFRESH_COOKIE_NAME, newRefreshToken, refreshCookieOptions);
-    res.json({ success: true, accessToken, user: publicUser(user) });
+    startSession(res, user);
   } catch (error) {
     res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
-    res.status(401).json({ success: false, message: 'Please sign in again.' });
+    fail(res, 401, 'Please sign in again.');
   }
 };
 
@@ -149,7 +210,7 @@ export const me = async (req, res, next) => {
     const user = await User.findById(req.user.id);
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Please sign in again.' });
+      return fail(res, 401, 'Please sign in again.');
     }
 
     res.json({ success: true, user: publicUser(user) });
@@ -165,19 +226,27 @@ const resolveGoogleUser = async (idToken) => {
   });
   const payload = ticket.getPayload();
 
-  if (!payload?.email) {
+  if (!payload?.email || payload.email_verified !== true) {
     return null;
   }
 
-  let user = await User.findOne({ email: payload.email.toLowerCase() });
+  const parsed = parseEmail(payload.email);
+  if (!parsed) return null;
+
+  if (isDisposableDomain(parsed.domain)) {
+    throw Object.assign(new Error(EMAIL_MESSAGES.disposable), { status: 400 });
+  }
+
+  let user = await User.findOne({ email: parsed.email });
 
   if (!user) {
-    const organization = await Organization.create({ name: `${payload.name || payload.email}'s workspace` });
+    const displayName = cleanName(payload.name) || cleanName(parsed.local) || 'Vaultrix user';
+    const organization = await Organization.create({ name: `${displayName}'s workspace` });
 
     user = await User.create({
       orgId: organization._id,
-      name: payload.name || payload.email,
-      email: payload.email.toLowerCase(),
+      name: displayName,
+      email: parsed.email,
       authProvider: 'google',
       googleId: payload.sub,
       avatarUrl: payload.picture || '',
@@ -200,40 +269,46 @@ const resolveGoogleUser = async (idToken) => {
 
 export const googleAuth = async (req, res, next) => {
   try {
-    const { idToken } = req.body;
+    const { idToken } = req.body || {};
 
-    if (!idToken) {
-      return res.status(400).json({ success: false, message: 'Google sign-in did not send back a token.' });
+    if (typeof idToken !== 'string' || !idToken) {
+      return fail(res, 400, 'Google sign-in did not send back a token.');
     }
 
-    const user = await resolveGoogleUser(idToken);
+    let user;
+    try {
+      user = await resolveGoogleUser(idToken);
+    } catch (error) {
+      if (error.status) return fail(res, error.status, error.message);
+      securityLog('google_token_rejected', req, { error: error.message });
+      return fail(res, 401, MESSAGES.googleUnverified);
+    }
 
     if (!user) {
-      return res.status(400).json({ success: false, message: 'Could not read your Google account details.' });
+      return fail(res, 400, 'Could not read your Google account details.');
     }
 
-    const accessToken = signAccessToken(user);
-    const refreshToken = signRefreshToken(user);
-
-    res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-    res.json({ success: true, accessToken, user: publicUser(user) });
+    startSession(res, user);
   } catch (error) {
     next(error);
   }
 };
 
 export const googleCallback = async (req, res) => {
-  const failureUrl = `${process.env.CLIENT_URL}/login?google_error=1`;
+  const clientUrl = String(process.env.CLIENT_URL).split(',')[0].trim().replace(/\/$/, '');
+  const failureUrl = `${clientUrl}/login?google_error=1`;
+  const successUrl = `${clientUrl}/dashboard`;
 
   try {
-    const { credential, g_csrf_token: bodyToken } = req.body;
+    const { credential, g_csrf_token: bodyToken } = req.body || {};
     const cookieToken = req.cookies?.g_csrf_token;
 
-    if (!credential) {
+    if (typeof credential !== 'string' || !credential) {
       return res.redirect(failureUrl);
     }
 
-    if (cookieToken && bodyToken && cookieToken !== bodyToken) {
+    if (!cookieToken || !bodyToken || cookieToken !== bodyToken) {
+      securityLog('google_csrf_mismatch', req);
       return res.redirect(failureUrl);
     }
 
@@ -245,7 +320,7 @@ export const googleCallback = async (req, res) => {
 
     const refreshToken = signRefreshToken(user);
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions);
-    res.redirect(`${process.env.CLIENT_URL}/dashboard`);
+    res.redirect(successUrl);
   } catch (error) {
     res.redirect(failureUrl);
   }
