@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import { signAccessToken, signRefreshToken } from '../utils/tokens.js';
 import { AVATAR_DIR } from '../middleware/upload.js';
+import { validatePassword, cleanName, NAME_MESSAGE, isCountryCode, isCurrencyCode } from '../utils/validators.js';
 
 // Must match the dictionaries shipped in frontend/src/i18n/locales.
 const APP_LANGUAGES = ['en', 'fr', 'es', 'ar', 'hi', 'ur'];
@@ -40,17 +41,35 @@ export const updateProfile = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Please sign in again.' });
     }
 
-    if (typeof name === 'string') {
-      const trimmed = name.trim();
-      if (!trimmed) {
+    if (name !== undefined) {
+      if (typeof name === 'string' && !name.trim()) {
         return res.status(400).json({ success: false, message: 'Your name cannot be empty.' });
       }
-      user.name = trimmed;
+      const cleaned = cleanName(name);
+      if (!cleaned) {
+        return res.status(400).json({ success: false, message: NAME_MESSAGE });
+      }
+      user.name = cleaned;
     }
 
-    if (typeof country === 'string') user.country = country;
-    if (typeof currency === 'string') user.currency = currency;
-    if (typeof language === 'string') {
+    if (country !== undefined) {
+      if (!isCountryCode(country)) {
+        return res.status(400).json({ success: false, message: 'That selection is not valid.' });
+      }
+      user.country = country;
+    }
+
+    if (currency !== undefined) {
+      if (!isCurrencyCode(currency)) {
+        return res.status(400).json({ success: false, message: 'That selection is not valid.' });
+      }
+      user.currency = currency;
+    }
+
+    if (language !== undefined) {
+      if (typeof language !== 'string') {
+        return res.status(400).json({ success: false, message: 'That language is not supported.' });
+      }
       if (!APP_LANGUAGES.includes(language)) {
         return res.status(400).json({ success: false, message: 'That language is not supported.' });
       }
@@ -77,13 +96,18 @@ export const changePassword = async (req, res, next) => {
       });
     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ success: false, message: 'New password needs to be at least 8 characters.' });
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter your current password and a new password.' });
     }
 
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Please sign in again.' });
+    }
+
+    const passwordError = validatePassword(newPassword, { email: user.email, name: user.name });
+    if (passwordError) {
+      return res.status(400).json({ success: false, message: passwordError });
     }
 
     if (!user.passwordHash) {
