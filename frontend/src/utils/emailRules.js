@@ -41,3 +41,11 @@ export const scorePassword = (password) => {
   if (points <= 3) return 2;
   return 3;
 };
+
+export const passwordIssue = (password) => {
+  if (!password) return 'auth.passwordRequired';
+  if (password.length < 8) return 'auth.passwordTooShort';
+  if (password.length > 64) return 'errors.passwordTooLong';
+  if (!/\p{L}/u.test(password) || !/\p{N}/u.test(password)) return 'errors.passwordNeedsMix';
+  return null;
+};
