@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout.jsx';
 import FormField from '../components/FormField.jsx';
 import EmailField from '../components/EmailField.jsx';
 import Button from '../components/Button.jsx';
+import Captcha, { captchaEnabled } from '../components/Captcha.jsx';
 import GoogleAuthButton from '../components/GoogleAuthButton.jsx';
 import PageLoader from '../components/PageLoader.jsx';
 import { login } from '../services/authService.js';
@@ -22,6 +23,9 @@ function LoginPage() {
   const redirectTo = location.state?.from?.pathname || '/dashboard';
 
   const [email, setEmail] = useState(location.state?.email || '');
+  const [emailStatus, setEmailStatus] = useState('idle');
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -47,7 +51,8 @@ function LoginPage() {
   const validate = () => {
     const next = {};
     if (!email.trim()) next.email = 'auth.emailRequired';
-    else if (!EMAIL_PATTERN.test(email.trim())) next.email = 'auth.emailInvalid';
+    else if (!EMAIL_PATTERN.test(email.trim()) || emailStatus === 'invalid') next.email = 'auth.emailInvalid';
+    else if (emailStatus === 'disposable') next.email = 'auth.emailDisposable';
     if (!password) next.password = 'auth.passwordRequired';
     setFieldErrors(next);
     return Object.keys(next).length === 0;
@@ -59,10 +64,11 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const data = await login({ email: email.trim(), password });
+      const data = await login({ email: email.trim(), password, captchaToken });
       proceedAfterAuth(data);
     } catch (error) {
       notify.error(tServer(error));
+      captchaRef.current?.reset();
       setLoading(false);
     }
   };
@@ -92,6 +98,8 @@ function LoginPage() {
             clearError('email');
           }}
           placeholder={t('auth.emailPlaceholder')}
+          checkProvider
+          onStatusChange={setEmailStatus}
           error={fieldErrors.email && t(fieldErrors.email)}
         />
 
@@ -128,8 +136,15 @@ function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" loading={loading} loadingLabel={t('auth.signingIn')}>
-          {t('auth.signIn')}
+        <Captcha ref={captchaRef} onToken={setCaptchaToken} />
+
+        <Button
+          type="submit"
+          loading={loading}
+          loadingLabel={t('auth.signingIn')}
+          disabled={captchaEnabled && !captchaToken}
+        >
+          {captchaEnabled && !captchaToken ? t('captcha.verifying') : t('auth.signIn')}
         </Button>
       </form>
 
