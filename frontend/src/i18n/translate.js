@@ -56,6 +56,18 @@ const SERVER_MESSAGE_KEYS = {
   'Too many wrong codes. Request a new one.': 'errors.otpTooManyAttempts',
   'Your reset session has expired. Please start again.': 'errors.resetSessionExpired',
   'Enter a new password to continue.': 'errors.newPasswordRequired',
+  'Password is too long. Use 64 characters or fewer.': 'errors.passwordTooLong',
+  'Password must include at least one letter and one number.': 'errors.passwordNeedsMix',
+  'That password is too easy to guess. Choose a stronger one.': 'errors.passwordTooWeak',
+  'Enter a valid name between 2 and 60 characters.': 'errors.nameInvalid',
+  'Too many failed sign-in attempts. Please try again in 15 minutes.': 'errors.accountLocked',
+  'Please complete the security check and try again.': 'errors.captchaRequired',
+  'The security check failed. Please refresh the page and try again.': 'errors.captchaFailed',
+  'The security check is unavailable right now. Please try again in a moment.': 'errors.captchaUnavailable',
+  'That selection is not valid.': 'errors.selectionInvalid',
+  'No account is registered with this email.': 'errors.noAccountFound',
+  'This account signs in with Google. Use the Continue with Google button instead.': 'errors.useGoogleReset',
+  'Google sign-in could not be verified.': 'auth.googleFailed',
 };
 
 export const serverMessageKey = (error) =>
