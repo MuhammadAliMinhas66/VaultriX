@@ -8,6 +8,7 @@ import FormField from '../components/FormField.jsx';
 import OtpInput from '../components/OtpInput.jsx';
 import PasswordStrength from '../components/PasswordStrength.jsx';
 import Button from '../components/Button.jsx';
+import Captcha, { captchaEnabled } from '../components/Captcha.jsx';
 import { requestPasswordReset, verifyResetCode, resetPassword } from '../services/authService.js';
 import { useTranslation } from '../i18n/useTranslation.js';
 import { notify } from '../i18n/notifications.js';
@@ -67,6 +68,8 @@ function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const verifyingRef = useRef(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   useEffect(() => {
     if (cooldown <= 0) return undefined;
@@ -93,19 +96,25 @@ function ForgotPasswordPage() {
         setEmailError(t('auth.emailInvalid'));
         return;
       }
+      if (emailStatus === 'disposable') {
+        setEmailError(t('auth.emailDisposable'));
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      const data = await requestPasswordReset(email.trim());
+      const data = await requestPasswordReset({ email: email.trim(), captchaToken, resend });
       setCooldown(data?.cooldownSeconds || 60);
       setCode('');
       setCodeError('');
       if (resend) notify.success(t('forgot.codeResent'));
+      else setCaptchaToken(null);
       setStep('code');
     } catch (error) {
       if (resend || step === 'code') notify.error(tServer(error));
       else setEmailError(tServer(error));
+      if (!resend) captchaRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -204,12 +213,20 @@ function ForgotPasswordPage() {
               }}
               placeholder={t('auth.emailPlaceholder')}
               autoFocus
+              checkProvider
               error={emailError}
               onStatusChange={setEmailStatus}
             />
 
-            <Button type="submit" loading={loading} loadingLabel={t('forgot.sendingCode')}>
-              {t('forgot.sendCode')}
+            <Captcha ref={captchaRef} onToken={setCaptchaToken} />
+
+            <Button
+              type="submit"
+              loading={loading}
+              loadingLabel={t('forgot.sendingCode')}
+              disabled={captchaEnabled && !captchaToken}
+            >
+              {captchaEnabled && !captchaToken ? t('captcha.verifying') : t('forgot.sendCode')}
             </Button>
 
             <Link
